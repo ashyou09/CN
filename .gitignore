@@ -1,0 +1,4 @@
+node_modules/
+.DS_Store
+personB/nginx/logs/*.log
+personB/nginx/logs/*.pid

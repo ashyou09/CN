@@ -1,0 +1,16 @@
+{
+  "name": "cn-course-project",
+  "version": "1.0.0",
+  "description": "Private Network Service Platform - Phase 1 Complete Project",
+  "scripts": {
+    "start:a": "node personC/backendA/server.js",
+    "start:b": "node personD/backendB/server.js",
+    "start:nginx": "./personB/nginx/start_nginx.sh start",
+    "stop:nginx": "./personB/nginx/start_nginx.sh stop",
+    "reload:nginx": "./personB/nginx/start_nginx.sh reload",
+    "test:client": "./personD/client/test.sh http://localhost:8080"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
