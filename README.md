@@ -33,7 +33,7 @@ CN/
 │   │   └── run.sh
 │   └── README.md
 │
-├── personD/                    # Mac 4: Backend Instance B (Port 3002) + Test Client
+├── personD/                    # Mac 4: Backend Instance B (Port 3002) + Test Client (testing)
 │   ├── backendB/
 │   │   ├── server.js
 │   │   ├── package.json
