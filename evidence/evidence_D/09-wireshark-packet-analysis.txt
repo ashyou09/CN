@@ -1,0 +1,56 @@
+=== Wireshark / tcpdump Packet Flow Analysis (Task G, Stage 8) ===
+Capture File: evidence/wireshark/phase1-flow.pcap
+Interface: en0
+Client (Mac 4): 10.7.17.147
+DNS Server (Mac 1): 10.7.17.94:53 (UDP)
+Edge Proxy / TLS (Mac 2): 10.7.3.128:8443 (TCP)
+
+---
+### 1. DNS Resolution (Layer 7 over UDP/53)
+Packet 1: 17:47:59.648155
+- Source: 10.7.17.147:59184 (Ephemeral Port)
+- Destination: 10.7.17.94:53 (Mac 1, dnsmasq)
+- Protocol: DNS (UDP)
+- Question: app.teamX.test (Type A)
+
+Packet 2: 17:47:59.677552
+- Source: 10.7.17.94:53
+- Destination: 10.7.17.147:59184
+- Protocol: DNS (UDP)
+- Answer: app.teamX.test. 0 IN A 10.7.3.128 (Mac 2 Edge IP)
+
+---
+### 2. TCP 3-Way Handshake (Layer 4 over TCP/8443)
+Packet 3: 17:47:59.691556
+- Source: 10.7.17.147:50268 -> Destination: 10.7.3.128:8443
+- Flags: [SYN] (Seq=1361363600, Win=65535, MSS=1460)
+
+Packet 4: 17:47:59.702827
+- Source: 10.7.3.128:8443 -> Destination: 10.7.17.147:50268
+- Flags: [SYN, ACK] (Seq=985512940, Ack=1361363601, Win=65535)
+
+Packet 5: 17:47:59.702968
+- Source: 10.7.17.147:50268 -> Destination: 10.7.3.128:8443
+- Flags: [ACK] (Ack=1, Win=2059)
+-> TCP Connection Established!
+
+---
+### 3. TLS 1.2 Cryptographic Handshake
+Packet 6: 17:47:59.703149
+- ClientHello: Offers TLS ciphers, SNI: app.teamX.test
+
+Packet 7-8: 17:47:59.742131
+- ServerHello + Server Certificate (CN=app.teamX.test, SAN=app.teamX.test, api.teamX.test) + ServerKeyExchange + ServerHelloDone
+
+Packet 9-11: 17:47:59.772211
+- ClientKeyExchange + ChangeCipherSpec + Finished
+
+Packet 12-14: 17:47:59.782227
+- Server ChangeCipherSpec + Finished
+-> Secure TLS Session Active (ECDHE-RSA-AES256-GCM-SHA384)
+
+---
+### 4. Encrypted Application Data & Response
+Packets 15-20:
+- Encrypted HTTP/1.1 Request (GET /api/status, Host: app.teamX.test)
+- Encrypted HTTP/1.1 Response (HTTP 200 OK, X-Backend: B, ETag: "44-FY1/VGeVJ+cNyO/oppFTd2kd0gg")
