@@ -33,16 +33,20 @@ CN/
 │   │   └── run.sh
 │   └── README.md
 │
-├── personD/                    # Mac 4: Backend Instance B (Port 3002) + Test Client (testing)
+├── personD/                    # Mac 4: Backend Instance B (Port 3002) + Test Client & Capture Lead
 │   ├── backendB/
 │   │   ├── server.js
 │   │   ├── package.json
 │   │   └── run.sh
 │   ├── client/
 │   │   └── test.sh
+│   ├── evidence/               # Direct links to Person D's captured evidence
+│   │   └── README.md
+│   ├── PERSON_D_EVALUATION_GUIDE.md # Comprehensive Examiner & Viva Voce grading guide
 │   └── README.md
 │
-├── evidence/                   # Packet captures (.pcapng), logs, and screenshots
+├── evidence/                   # Packet captures (.pcap), logs, and verification outputs
+│   ├── evidence_D/             # Dedicated Evidence Portfolio for Person D / Mac 4
 │   ├── lan/
 │   ├── dns/
 │   ├── load-balancing/
