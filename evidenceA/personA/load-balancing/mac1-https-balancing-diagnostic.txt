@@ -1,0 +1,15 @@
+Mac 1 diagnostic with explicit CA and pinned edge address, 2026-10-02.
+The macOS system resolver and CA trust are still pending, so this is not final client evidence.
+
+$ for i in 1 2 3 4 5 6; do curl -sS --max-time 5 --resolve app.teamX.test:8443:10.7.3.128 --cacert personB/tls/ca.crt -D - -o /dev/null https://app.teamX.test:8443/api/status | awk -v n="$i" 'BEGIN {printf "Request %s: ", n} tolower($1)=="x-backend:" {print $2}'; done
+curl: (28) Operation timed out after 5005 milliseconds with 0 bytes received
+Request 1: [no backend response]
+Request 2: B
+curl: (28) Operation timed out after 5005 milliseconds with 0 bytes received
+Request 3: [no backend response]
+Request 4: B
+curl: (28) Operation timed out after 5006 milliseconds with 0 bytes received
+Request 5: [no backend response]
+Request 6: B
+
+Follow-up from Mac 1: direct backend A request also timed out once, while backend B returned HTTP 200. Mac C subsequently replied to three pings and accepted TCP port 3001. This suggests intermittent backend A reachability; the balancing gate remains open.

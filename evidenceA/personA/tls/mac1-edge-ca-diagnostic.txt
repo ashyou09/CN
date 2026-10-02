@@ -1,0 +1,29 @@
+Mac 1 TLS diagnostics before installing the local CA in macOS trust, 2026-10-02
+
+$ openssl s_client -brief -connect 10.7.3.128:8443 -servername app.teamX.test -verify_hostname app.teamX.test -CAfile personB/tls/ca.crt
+Connecting to 10.7.3.128
+CONNECTION ESTABLISHED
+Protocol version: TLSv1.3
+Ciphersuite: TLS_AES_256_GCM_SHA384
+Peer certificate: C=IN, ST=Karnataka, L=Bengaluru, O=TeamX, OU=NetworkLab, CN=app.teamX.test
+Hash used: SHA256
+Signature type: rsa_pss_rsae_sha256
+Verification: OK
+Verified peername: app.teamX.test
+Negotiated TLS1.3 group: X25519MLKEM768
+DONE
+
+$ curl -sS -i --max-time 5 --resolve app.teamX.test:8443:10.7.3.128 --cacert personB/tls/ca.crt https://app.teamX.test:8443/api/status
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+Date: Fri, 02 Oct 2026 12:01:57 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 68
+Connection: keep-alive
+X-Powered-By: Express
+X-Backend: B
+ETag: "44-1ncu0BDcqoCWJJmmRSmuk0vlB5A"
+
+{"backend":"B","status":"ok","timestamp":"2026-10-02T12:01:57.589Z"}
+
+This verifies the edge using the checked-in CA but bypasses the macOS resolver with --resolve. It does not prove system trust or ordinary lookup.

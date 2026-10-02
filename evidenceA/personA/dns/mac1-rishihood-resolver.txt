@@ -1,0 +1,24 @@
+Mac 1 address on en0 (Wi-Fi): 10.7.17.94
+
+Before update, networksetup -getdnsservers Wi-Fi:
+10.124.23.210
+8.8.8.8
+8.8.4.4
+
+After update, networksetup -getdnsservers Wi-Fi:
+10.7.17.94
+8.8.8.8
+8.8.4.4
+
+scutil --dns, primary resolver:
+resolver #1
+  nameserver[0] : 10.7.17.94
+  nameserver[1] : 8.8.8.8
+  nameserver[2] : 8.8.4.4
+  flags    : Request A records
+  reach    : 0x00030002 (Reachable,Local Address,Directly Reachable Address)
+
+dig app.teamX.test A +time=2 +tries=1:
+;; ANSWER SECTION:
+app.teamX.test.          0       IN A 10.7.3.128
+;; SERVER: 10.7.17.94#53(10.7.17.94)

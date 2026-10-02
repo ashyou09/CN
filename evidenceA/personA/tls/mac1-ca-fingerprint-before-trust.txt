@@ -1,0 +1,9 @@
+Mac 1 copy of the TeamX local CA, 2026-10-02
+
+$ openssl x509 -in personB/tls/ca.crt -noout -subject -dates -fingerprint -sha256
+subject=C=IN, ST=Karnataka, L=Bengaluru, O=TeamX, OU=NetworkLab, CN=TeamX Local CA
+notBefore=Sep 28 10:03:06 2026 GMT
+notAfter=Sep 28 10:03:06 2027 GMT
+sha256 Fingerprint=FA:FB:65:40:30:9D:00:2E:C3:BD:80:A8:32:60:66:57:36:32:15:87:CB:E4:4D:AC:05:CE:19:AF:76:13:9E:86
+
+Person B must confirm the same fingerprint from Mac B before installing this CA into Mac 1's system trust store.

@@ -1,0 +1,9 @@
+Captured on Mac 1 before Task B made any network DNS changes.
+Active interface: en0 (Wi-Fi), address 10.124.23.210.
+
+$ networksetup -getdnsservers Wi-Fi
+10.124.23.210
+8.8.8.8
+8.8.4.4
+
+These DNS server entries were already configured. Task B did not replace or remove them.

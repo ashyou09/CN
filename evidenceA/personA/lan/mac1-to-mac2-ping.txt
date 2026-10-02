@@ -1,0 +1,9 @@
+$ ping -c 3 10.7.3.128
+PING 10.7.3.128 (10.7.3.128): 56 data bytes
+64 bytes from 10.7.3.128: icmp_seq=0 ttl=64 time=79.080 ms
+64 bytes from 10.7.3.128: icmp_seq=1 ttl=64 time=21.638 ms
+64 bytes from 10.7.3.128: icmp_seq=2 ttl=64 time=59.665 ms
+
+--- 10.7.3.128 ping statistics ---
+3 packets transmitted, 3 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 21.638/53.461/79.080/23.857 ms

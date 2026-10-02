@@ -184,12 +184,21 @@ The repository is already configured for `app.teamX.test` and `api.teamX.test`. 
 
    ```bash
    networksetup -getdnsservers "Wi-Fi"
-   sudo networksetup -setdnsservers "Wi-Fi" "$MAC1_IP"
+   sudo networksetup -setdnsservers "Wi-Fi" "$MAC1_IP" 8.8.8.8 8.8.4.4
    scutil --dns
    dig app.teamX.test A
    ```
 
-   Replace `"Wi-Fi"` if the active service is named differently. D must also confirm ordinary system lookup through `curl` in Stage 7. `dig @MAC1_IP` proves A answers; `dig` without `@` plus `scutil --dns` help check the client resolver configuration. Save both outputs in `evidence/dns/`.
+   The command above retains A's existing `8.8.8.8` and `8.8.4.4`; on other Macs, append their own recorded DNS entries instead. Replace `"Wi-Fi"` if the active service is named differently. D must also confirm ordinary system lookup through `curl` in Stage 7. `dig @MAC1_IP` proves A answers; `dig` without `@` plus `scutil --dns` help check the client resolver configuration. Save both outputs in `evidence/dns/`.
+
+   If `dig` succeeds but `curl` or `dscacheutil -q host -a name app.teamX.test` cannot resolve the name, check whether macOS is sending the private name to a public DNS server. Keep the existing DNS entries and add a domain-specific resolver after checking that `/etc/resolver/teamX.test` does not already exist:
+
+   ```bash
+   sudo mkdir -p /etc/resolver
+   printf 'nameserver %s\n' "$MAC1_IP" | sudo tee /etc/resolver/teamX.test
+   scutil --dns
+   dscacheutil -q host -a name app.teamX.test
+   ```
 
 **Gate:** At least two other Macs use A as resolver and resolve both private names to Mac 2.
 

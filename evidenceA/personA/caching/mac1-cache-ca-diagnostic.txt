@@ -1,0 +1,21 @@
+Mac 1 HTTPS caching diagnostic using --resolve and --cacert, 2026-10-02
+
+$ curl -sS -I --max-time 8 --resolve app.teamX.test:8443:10.7.3.128 --cacert personB/tls/ca.crt https://app.teamX.test:8443/api/cached
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+Date: Fri, 02 Oct 2026 12:09:34 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 57
+X-Backend: A
+Cache-Control: public, max-age=60
+ETag: "39-jxvt8kclwpAy7qZ0gJ/MRIVczo0"
+
+$ curl -sS -i --max-time 8 --resolve app.teamX.test:8443:10.7.3.128 --cacert personB/tls/ca.crt -H 'If-None-Match: "39-jxvt8kclwpAy7qZ0gJ/MRIVczo0"' https://app.teamX.test:8443/api/cached
+HTTP/1.1 304 Not Modified
+Server: nginx/1.31.6
+Date: Fri, 02 Oct 2026 12:09:44 GMT
+X-Backend: B
+Cache-Control: public, max-age=60
+ETag: "39-jxvt8kclwpAy7qZ0gJ/MRIVczo0"
+
+The ETag matched across backend A and B. Repeat by ordinary private-name lookup after A's macOS resolver and CA trust are configured for final client evidence.

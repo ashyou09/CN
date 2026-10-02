@@ -2,6 +2,12 @@
 
 A fully local private network service platform built on a four-machine topology running across macOS laptops.
 
+## Interactive demo
+
+Run `npm run demo` on Mac 2, then open `http://localhost:5050`. The page walks through DNS, the edge, both backends, and the response path. Each live check shows its scope and command output; the evidence library lists saved files and missing categories. You can export results from the current browser session as JSON.
+
+The demo probes from the machine running it. For the full four-machine proof, collect client-side DNS, trusted HTTPS, ping matrix, and packet captures using [`projectflow.md`](projectflow.md). Configure IPs in the demo when the LAN changes; also update dnsmasq and Nginx separately. Saved evidence and live checks represent different times and should be read separately.
+
 ---
 
 ## Architecture & Team Role Division

@@ -1,0 +1,14 @@
+Mac 1 HTTPS balancing diagnostic using --resolve and --cacert, 2026-10-02
+
+Endpoint: https://app.teamX.test:8443/api/status
+Pinned edge: 10.7.3.128
+CA file: personB/tls/ca.crt
+
+Request 1: A
+Request 2: B
+Request 3: A
+Request 4: B
+Request 5: A
+Request 6: B
+
+All six requests completed. This verifies the edge/backend path and TLS against the supplied CA. Repeat without --resolve and --cacert after A's system resolver and CA trust are configured for final client evidence.

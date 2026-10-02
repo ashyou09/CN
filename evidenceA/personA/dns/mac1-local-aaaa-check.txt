@@ -1,0 +1,26 @@
+Mac 1 DNS validation after exact local rules, 2026-10-02
+
+$ dnsmasq --test -C personA/dns/dnsmasq.conf
+dnsmasq: syntax check OK.
+
+$ rg '^address=' personA/dns/dnsmasq.conf
+address=/app.teamX.test/10.7.3.128
+address=/api.teamX.test/10.7.3.128
+
+$ dig @10.7.17.94 app.teamX.test A +short
+10.7.3.128
+
+$ dig @10.7.17.94 api.teamX.test A +short
+10.7.3.128
+
+$ dig @10.7.17.94 app.teamX.test AAAA +time=2 +tries=1
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 25147
+;; ANSWER: 0, AUTHORITY: 0
+;; SERVER: 10.7.17.94#53(10.7.17.94)
+
+$ dig @10.7.17.94 api.teamX.test AAAA +time=2 +tries=1
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 12984
+;; ANSWER: 0, AUTHORITY: 0
+;; SERVER: 10.7.17.94#53(10.7.17.94)
+
+The private names have no IPv6 address. NOERROR with zero answers is the correct NODATA response; dnsmasq keeps the queries local.
