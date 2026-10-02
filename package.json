@@ -8,7 +8,8 @@
     "start:nginx": "./personB/nginx/start_nginx.sh start",
     "stop:nginx": "./personB/nginx/start_nginx.sh stop",
     "reload:nginx": "./personB/nginx/start_nginx.sh reload",
-    "test:client": "./personD/client/test.sh http://localhost:8080"
+    "test:client": "./personD/client/test.sh http://localhost:8080",
+    "demo": "./demo/run_demo.sh"
   },
   "dependencies": {
     "express": "^4.21.2"
