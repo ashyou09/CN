@@ -1,0 +1,23 @@
+Mac 1 network inventory, Rishihood Learner Wi-Fi, 2026-10-02
+
+$ hostname
+Pankajs-MacBook-Pro-2.local
+
+$ route -n get default
+   route to: default
+destination: default
+       mask: default
+    gateway: 10.7.0.1
+  interface: en0
+
+$ ipconfig getifaddr en0
+10.7.17.94
+
+$ ipconfig getoption en0 subnet_mask
+255.255.224.0
+
+$ ifconfig en0  (selected fields)
+en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+    ether 46:1d:da:58:a4:fb
+    inet 10.7.17.94 netmask 0xffffe000 broadcast 10.7.31.255
+    status: active

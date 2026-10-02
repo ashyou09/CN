@@ -5,7 +5,7 @@
 ```
                  +---------------------------------------------+
                  |            Private LAN (Wi-Fi)              |
-                 |               e.g. 10.7.x.x / 192.168.x.x   |
+                 |          10.7.0.0/19 · gateway 10.7.0.1     |
                  +----------------------+----------------------+
                                         |
        +--------------------------------+--------------------------------+
@@ -29,6 +29,15 @@
                                  |   Client     |
                                  +--------------+
 ```
+
+Current team addresses on Rishihood Learner Wi-Fi (2026-10-02):
+
+| Machine | Role | IPv4 address |
+| :--- | :--- | :--- |
+| Mac 1 / A | Private DNS and client | `10.7.17.94` |
+| Mac 2 / B | Edge proxy | `10.7.3.128` |
+| Mac 3 / C | Backend A | `10.7.6.84` |
+| Mac 4 / D | Backend B and client | `10.7.17.147` |
 
 ---
 

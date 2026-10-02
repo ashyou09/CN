@@ -24,10 +24,12 @@ sudo dnsmasq -C dnsmasq.conf -d
 On other Macs (Mac 2, Mac 3, Mac 4):
 1. Open **System Settings** → **Network** → **Wi-Fi / Ethernet** → **Details...** → **DNS**.
 2. Add `<MAC1_IP>` at the top of the DNS Servers list.
+   Keep the DNS servers that were already there, including `8.8.8.8` and `8.8.4.4` on Mac 1.
 3. Verify with:
    ```bash
    dig @<MAC1_IP> app.teamX.test
    ```
+4. Also check ordinary system lookup with `dscacheutil -q host -a name app.teamX.test` and `curl` by name. If macOS sends the private domain to another DNS server, follow the domain-specific `/etc/resolver/teamX.test` step in `projectflow.md` Stage 5 while retaining the existing DNS entries.
 
 ## Running Client Verification
 ```bash

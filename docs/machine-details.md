@@ -7,12 +7,12 @@ Fill in this table when all 4 Macs are connected to the team LAN / Wi-Fi segment
 | Parameter | Mac 1 (Person A) | Mac 2 (Person B) | Mac 3 (Person C) | Mac 4 (Person D) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Role** | Private DNS + Client | Edge Proxy / LB / TLS | Backend Server A | Backend Server B + Client |
-| **Hostname** | `mac1.local` | `mac2.local` | `mac3.local` | `mac4.local` |
-| **Interface** | e.g. `en0` | e.g. `en0` | e.g. `en0` | e.g. `en0` |
-| **IPv4 Address** | | | | |
-| **Subnet Mask** | e.g. `255.255.255.0` (`/24`) | | | |
-| **Default Gateway**| e.g. `10.7.0.1` | | | |
-| **MAC Address** | | | | |
+| **Hostname** | `Pankajs-MacBook-Pro-2.local` | To verify on B | To verify on C | To verify on D |
+| **Interface** | `en0` (Wi-Fi) | To verify on B | To verify on C | To verify on D |
+| **IPv4 Address** | `10.7.17.94` | `10.7.3.128` | `10.7.6.84` | `10.7.17.147` |
+| **Subnet Mask** | `255.255.224.0` (`/19`) | To verify on B | To verify on C | To verify on D |
+| **Default Gateway**| `10.7.0.1` | To verify on B | To verify on C | To verify on D |
+| **MAC Address** | `46:1d:da:58:a4:fb` (current Wi-Fi address) | To verify on B | To verify on C | To verify on D |
 | **Open Service Port**| `53` (UDP/TCP) | `8080`, `8443` | `3001` | `3002` |
 
 ---
@@ -44,9 +44,9 @@ arp -a
 
 All machines must verify reachability before starting higher layer services:
 
-| From \ To | Mac 1 | Mac 2 | Mac 3 | Mac 4 |
+| From \ To | Mac 1 (`10.7.17.94`) | Mac 2 (`10.7.3.128`) | Mac 3 (`10.7.6.84`) | Mac 4 (`10.7.17.147`) |
 | :--- | :---: | :---: | :---: | :---: |
-| **Mac 1** | — | [ ] PASS | [ ] PASS | [ ] PASS |
+| **Mac 1** | — | [x] PASS | [x] PASS | [x] PASS |
 | **Mac 2** | [ ] PASS | — | [ ] PASS | [ ] PASS |
 | **Mac 3** | [ ] PASS | [ ] PASS | — | [ ] PASS |
 | **Mac 4** | [ ] PASS | [ ] PASS | [ ] PASS | — |

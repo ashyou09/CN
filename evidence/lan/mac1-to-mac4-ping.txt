@@ -1,0 +1,9 @@
+$ ping -c 3 10.7.17.147
+PING 10.7.17.147 (10.7.17.147): 56 data bytes
+64 bytes from 10.7.17.147: icmp_seq=0 ttl=64 time=109.828 ms
+64 bytes from 10.7.17.147: icmp_seq=1 ttl=64 time=10.884 ms
+64 bytes from 10.7.17.147: icmp_seq=2 ttl=64 time=46.288 ms
+
+--- 10.7.17.147 ping statistics ---
+3 packets transmitted, 3 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 10.884/55.667/109.828/40.934 ms
