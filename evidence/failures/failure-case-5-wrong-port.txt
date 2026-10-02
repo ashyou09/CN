@@ -1,0 +1,31 @@
+=== Failure Scenario 5: Wrong Destination Port (Task G, Stage 9) ===
+Owner: Person D (Mac 4)
+Target: Mac 2 Edge IP (10.7.3.128)
+
+1. Layer 3 (Network Layer) Reachability Check:
+$ ping -c 1 10.7.3.128
+PING 10.7.3.128 (10.7.3.128): 56 data bytes
+64 bytes from 10.7.3.128: icmp_seq=0 ttl=64 time=15.923 ms
+
+--- 10.7.3.128 ping statistics ---
+1 packets transmitted, 1 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 15.923/15.923/15.923/0.000 ms
+
+2. Layer 4 (Transport Layer) TCP Port Check:
+$ nc -vz -w 2 10.7.3.128 8444
+nc: connectx to 10.7.3.128 port 8444 (tcp) failed: Connection refused
+
+3. Layer 7 Application HTTPS Curl:
+$ curl --connect-timeout 3 -v --resolve "app.teamX.test:8444:10.7.3.128" "https://app.teamX.test:8444/api/status"
+* Added app.teamX.test:8444:10.7.3.128 to DNS cache
+*   Trying 10.7.3.128:8444...
+* connect to 10.7.3.128 port 8444 from 10.7.17.147 port 50284 failed: Connection refused
+* Failed to connect to app.teamX.test port 8444 after 1457 ms: Couldn't connect to server
+* Closing connection
+curl: (7) Failed to connect to app.teamX.test port 8444 after 1457 ms: Couldn't connect to server
+
+=== Diagnosis & Viva Defense ===
+- Layer 3 (IP/ICMP) is healthy: Host is reachable via ping.
+- Layer 4 (TCP Transport) fails: Target host returns a TCP RST packet because no service is listening on port 8444.
+- Proves separation between IP address (Layer 3 Host Identifier) and Port number (Layer 4 Service Multiplexer).
+- Remediation: Target port 8443 (HTTPS) or 8080 (HTTP).

@@ -1,0 +1,49 @@
+=== OpenSSL Certificate Details (server.crt) ===
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 4296996611394142416 (0x3ba3244fe93498d0)
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=IN, ST=Karnataka, L=Bengaluru, O=TeamX, OU=NetworkLab, CN=TeamX Local CA
+        Validity
+            Not Before: Sep 28 10:03:07 2026 GMT
+            Not After : Sep 28 10:03:07 2027 GMT
+        Subject: C=IN, ST=Karnataka, L=Bengaluru, O=TeamX, OU=NetworkLab, CN=app.teamX.test
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+        X509v3 extensions:
+            X509v3 Basic Constraints: 
+                CA:FALSE
+            X509v3 Subject Alternative Name: 
+                DNS:app.teamX.test, DNS:api.teamX.test
+
+=== CA Trust Verification via OpenSSL ===
+personB/tls/server.crt: OK
+
+=== Client Curl Verification Over HTTPS (Mac 4 -> Mac 2) without -k ===
+* Added app.teamX.test:8443:10.7.3.128 to DNS cache
+* Hostname app.teamX.test was found in DNS cache
+*   Trying 10.7.3.128:8443...
+* Connected to app.teamX.test (10.7.3.128) port 8443
+* ALPN: curl offers h2,http/1.1
+* SSL connection using TLSv1.3 / AEAD-AES256-GCM-SHA384
+* Server certificate:
+*  subject: C=IN; ST=Karnataka; L=Bengaluru; O=TeamX; OU=NetworkLab; CN=app.teamX.test
+*  subjectAltName: host "app.teamX.test" matched cert's "app.teamX.test"
+*  issuer: C=IN; ST=Karnataka; L=Bengaluru; O=TeamX; OU=NetworkLab; CN=TeamX Local CA
+*  SSL certificate verify ok.
+> GET /api/status HTTP/1.1
+> Host: app.teamX.test:8443
+> User-Agent: curl/8.7.1
+> Accept: */*
+< HTTP/1.1 200 OK
+< Server: nginx/1.31.6
+< Content-Type: application/json; charset=utf-8
+< Content-Length: 68
+< Connection: keep-alive
+< X-Powered-By: Express
+< X-Backend: B
+< ETag: "44-uCTxrIRH8hvYMgO242WfOEw+Nws"
+
+{"backend":"B","status":"ok","timestamp":"2026-10-02T12:14:49.619Z"}

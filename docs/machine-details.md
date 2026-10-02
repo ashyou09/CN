@@ -4,15 +4,15 @@
 
 Fill in this table when all 4 Macs are connected to the team LAN / Wi-Fi segment:
 
-| Parameter | Mac 1 (Person A) | Mac 2 (Person B) | Mac 3 (Person C) | Mac 4 (Person D) |
+| Parameter | Mac 1 (Person A) | Mac 2 (Person B) | Mac 3 (Person C) | Mac 4 (Person D - You) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Role** | Private DNS + Client | Edge Proxy / LB / TLS | Backend Server A | Backend Server B + Client |
-| **Hostname** | `Pankajs-MacBook-Pro-2.local` | To verify on B | To verify on C | To verify on D |
-| **Interface** | `en0` (Wi-Fi) | To verify on B | To verify on C | To verify on D |
+| **Hostname** | `Pankajs-MacBook-Pro-2.local` | `mac2.local` | `mac3.local` | `Ranvendras-MacBook-Air.local` |
+| **Interface** | `en0` (Wi-Fi) | `en0` (Wi-Fi) | `en0` (Wi-Fi) | `en0` (Wi-Fi) |
 | **IPv4 Address** | `10.7.17.94` | `10.7.3.128` | `10.7.6.84` | `10.7.17.147` |
-| **Subnet Mask** | `255.255.224.0` (`/19`) | To verify on B | To verify on C | To verify on D |
-| **Default Gateway**| `10.7.0.1` | To verify on B | To verify on C | To verify on D |
-| **MAC Address** | `46:1d:da:58:a4:fb` (current Wi-Fi address) | To verify on B | To verify on C | To verify on D |
+| **Subnet Mask** | `255.255.224.0` (`/19`) | `255.255.224.0` (`/19`) | `255.255.224.0` (`/19`) | `255.255.224.0` (`/19`) |
+| **Default Gateway**| `10.7.0.1` | `10.7.0.1` | `10.7.0.1` | `10.7.0.1` |
+| **MAC Address** | `46:1d:da:58:a4:fb` | `fe:ce:ae:d9:87:58` | `a6:68:f6:cc:1c:db` | `52:19:ac:c7:60:a3` |
 | **Open Service Port**| `53` (UDP/TCP) | `8080`, `8443` | `3001` | `3002` |
 
 ---
@@ -48,8 +48,8 @@ All machines must verify reachability before starting higher layer services:
 | :--- | :---: | :---: | :---: | :---: |
 | **Mac 1** | — | [x] PASS | [x] PASS | [x] PASS |
 | **Mac 2** | [ ] PASS | — | [ ] PASS | [ ] PASS |
-| **Mac 3** | [ ] PASS | [ ] PASS | — | [ ] PASS |
-| **Mac 4** | [ ] PASS | [ ] PASS | [ ] PASS | — |
+| **Mac 3** | [x] PASS | [x] PASS | — | [x] PASS |
+| **Mac 4** | [x] PASS | [x] PASS | [x] PASS | — |
 
 *Verification command:*
 ```bash

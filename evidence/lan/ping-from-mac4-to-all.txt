@@ -1,0 +1,29 @@
+=== Ping from Mac D (10.7.17.147) to Mac A (10.7.17.94) ===
+PING 10.7.17.94 (10.7.17.94): 56 data bytes
+64 bytes from 10.7.17.94: icmp_seq=0 ttl=64 time=1763.682 ms
+64 bytes from 10.7.17.94: icmp_seq=1 ttl=64 time=795.350 ms
+64 bytes from 10.7.17.94: icmp_seq=2 ttl=64 time=16.741 ms
+
+--- 10.7.17.94 ping statistics ---
+3 packets transmitted, 3 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 16.741/858.591/1763.682/714.586 ms
+
+=== Ping from Mac D (10.7.17.147) to Mac B (10.7.3.128) ===
+PING 10.7.3.128 (10.7.3.128): 56 data bytes
+64 bytes from 10.7.3.128: icmp_seq=0 ttl=64 time=47.216 ms
+64 bytes from 10.7.3.128: icmp_seq=1 ttl=64 time=13.691 ms
+64 bytes from 10.7.3.128: icmp_seq=2 ttl=64 time=17.295 ms
+
+--- 10.7.3.128 ping statistics ---
+3 packets transmitted, 3 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 13.691/26.067/47.216/15.027 ms
+
+=== Ping from Mac D (10.7.17.147) to Mac C (10.7.6.84) ===
+PING 10.7.6.84 (10.7.6.84): 56 data bytes
+64 bytes from 10.7.6.84: icmp_seq=0 ttl=64 time=118.007 ms
+64 bytes from 10.7.6.84: icmp_seq=1 ttl=64 time=14.974 ms
+64 bytes from 10.7.6.84: icmp_seq=2 ttl=64 time=33.328 ms
+
+--- 10.7.6.84 ping statistics ---
+3 packets transmitted, 3 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 14.974/55.436/118.007/44.874 ms

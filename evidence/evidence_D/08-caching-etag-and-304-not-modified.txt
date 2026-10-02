@@ -1,0 +1,25 @@
+=== 1. Initial Request (HTTP 200 OK + Cache-Control + ETag) ===
+Command: curl -I --resolve "app.teamX.test:8443:10.7.3.128" "https://app.teamX.test:8443/api/cached"
+
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+Date: Fri, 02 Oct 2026 12:16:13 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 57
+Connection: keep-alive
+X-Powered-By: Express
+X-Backend: B
+Cache-Control: public, max-age=60
+ETag: "39-jxvt8kclwpAy7qZ0gJ/MRIVczo0"
+
+=== 2. Conditional Request (HTTP 304 Not Modified) ===
+Command: curl -i --resolve "app.teamX.test:8443:10.7.3.128" -H 'If-None-Match: "39-jxvt8kclwpAy7qZ0gJ/MRIVczo0"' "https://app.teamX.test:8443/api/cached"
+
+HTTP/1.1 304 Not Modified
+Server: nginx/1.31.6
+Date: Fri, 02 Oct 2026 12:16:47 GMT
+Connection: keep-alive
+X-Powered-By: Express
+X-Backend: A
+Cache-Control: public, max-age=60
+ETag: "39-jxvt8kclwpAy7qZ0gJ/MRIVczo0"

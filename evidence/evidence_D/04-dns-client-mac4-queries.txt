@@ -1,0 +1,72 @@
+=== Stage 5: DNS Client Evidence from Mac 4 (Person D - 10.7.17.147) ===
+Resolver: Mac 1 (Person A - 10.7.17.94:53)
+Edge Target: Mac 2 (Person B - 10.7.3.128)
+
+1. Client Resolver Configuration Check (scutil --dns):
+$ scutil --dns
+DNS configuration
+
+resolver #1
+  nameserver[0] : 10.7.17.94
+  flags    : Request A records, Request AAAA records
+  reach    : 0x00020002 (Reachable,Directly Reachable Address)
+
+resolver #2
+  domain   : local
+  options  : mdns
+  timeout  : 5
+  flags    : Request A records, Request AAAA records
+  reach    : 0x00000000 (Not Reachable)
+  order    : 300000
+
+2. Explicit DNS Query to Private Resolver: app.teamX.test
+$ dig @10.7.17.94 app.teamX.test A
+
+; <<>> DiG 9.10.6 <<>> @10.7.17.94 app.teamX.test A +time=2 +tries=1
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 40055
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;app.teamX.test.			IN	A
+
+;; ANSWER SECTION:
+app.teamX.test.		0	IN	A	10.7.3.128
+
+;; Query time: 8 msec
+;; SERVER: 10.7.17.94#53(10.7.17.94)
+;; WHEN: Fri Oct 02 17:42:50 IST 2026
+;; MSG SIZE  rcvd: 59
+
+3. Explicit DNS Query to Private Resolver: api.teamX.test
+$ dig @10.7.17.94 api.teamX.test A
+
+; <<>> DiG 9.10.6 <<>> @10.7.17.94 api.teamX.test A +time=2 +tries=1
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 19980
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;api.teamX.test.			IN	A
+
+;; ANSWER SECTION:
+api.teamX.test.		0	IN	A	10.7.3.128
+
+;; Query time: 19 msec
+;; SERVER: 10.7.17.94#53(10.7.17.94)
+;; WHEN: Fri Oct 02 17:42:56 IST 2026
+;; MSG SIZE  rcvd: 59
+
+4. System Resolver Test (without @ flag):
+$ dig app.teamX.test A +short
+10.7.3.128
+
+Result: Private DNS resolution verified from Mac 4. Both hostnames resolve to Edge (10.7.3.128).

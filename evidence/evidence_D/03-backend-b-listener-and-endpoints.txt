@@ -1,0 +1,64 @@
+=== Backend B Local Verification (Person D / Mac 4 - 10.7.17.147) ===
+Timestamp: Fri Oct 02 18:25:00 IST 2026
+
+1. TCP Listener Check on Port 3002:
+$ lsof -nP -iTCP:3002 -sTCP:LISTEN
+COMMAND   PID                 USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+node     4172 ranvendrapratapsingh   18u  IPv4 0xeab7a836226943e2      0t0  TCP *:3002 (LISTEN)
+
+2. Root Endpoint Verification (GET /):
+$ curl -i http://localhost:3002/
+HTTP/1.1 200 OK
+X-Powered-By: Express
+X-Backend: B
+Content-Type: application/json; charset=utf-8
+Content-Length: 99
+ETag: "63-CzXfMq8KLq3UfrdwUv0Marni6AQ"
+Date: Fri, 02 Oct 2026 12:54:51 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"message":"Backend B is running","backend":"B","port":3002,"timestamp":"2026-10-02T12:54:51.338Z"}
+
+3. Status Endpoint Verification (GET /api/status):
+$ curl -i http://localhost:3002/api/status
+HTTP/1.1 200 OK
+X-Powered-By: Express
+X-Backend: B
+Content-Type: application/json; charset=utf-8
+Content-Length: 68
+ETag: "44-2ktOCZnQeSsb5diLA3/quOk1kB0"
+Date: Fri, 02 Oct 2026 12:54:51 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"backend":"B","status":"ok","timestamp":"2026-10-02T12:54:51.346Z"}
+
+4. Cached Endpoint Verification (GET /api/cached):
+$ curl -i http://localhost:3002/api/cached
+HTTP/1.1 200 OK
+X-Powered-By: Express
+X-Backend: B
+Cache-Control: public, max-age=60
+Content-Type: application/json; charset=utf-8
+Content-Length: 57
+ETag: "39-jxvt8kclwpAy7qZ0gJ/MRIVczo0"
+Date: Fri, 02 Oct 2026 12:54:51 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"data":"Cached content demonstration","version":"1.0.0"}
+
+5. Remote Access Verification from Edge (Mac 2: 10.7.3.128):
+$ curl -i http://10.7.17.147:3002/api/status
+HTTP/1.1 200 OK
+X-Powered-By: Express
+X-Backend: B
+Content-Type: application/json; charset=utf-8
+Content-Length: 68
+ETag: "44-2ktOCZnQeSsb5diLA3/quOk1kB0"
+Date: Fri, 02 Oct 2026 12:54:55 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"backend":"B","status":"ok","timestamp":"2026-10-02T12:54:55.102Z"}

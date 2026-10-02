@@ -1,0 +1,26 @@
+=== Failure Scenario 2: DNS Record Misdirection (Task B/E, Stage 9) ===
+Owner: Person A (configures DNS record pointing to Mac 3 10.7.6.84 instead of Edge Mac 2 10.7.3.128); Person D tests.
+
+1. Client DNS Lookup returns Mac 3 IP:
+$ dig @10.7.17.94 app.teamX.test A
+;; ANSWER SECTION:
+app.teamX.test.		0	IN	A	10.7.6.84
+;; SERVER: 10.7.17.94#53
+
+2. Client Attempts HTTPS Connection to Misdirected Target (10.7.6.84:8443):
+$ curl --connect-timeout 3 -v --resolve "app.teamX.test:8443:10.7.6.84" "https://app.teamX.test:8443/api/status"
+* Added app.teamX.test:8443:10.7.6.84 to DNS cache
+*   Trying 10.7.6.84:8443...
+* connect to 10.7.6.84 port 8443 from 10.7.17.147 port 50570 failed: Connection refused
+* Failed to connect to app.teamX.test port 8443 after 1011 ms: Couldn't connect to server
+* Closing connection
+curl: (7) Failed to connect to app.teamX.test port 8443 after 1011 ms: Couldn't connect to server
+
+=== Diagnosis & Viva Defense ===
+- Layer 7 DNS lookup succeeds: DNS returns NOERROR with an A record.
+- Layer 4 TCP connection fails: Client attempts TCP handshake with Mac 3 on port 8443, but Mac 3 is only running Backend A on port 3001, not the edge TLS proxy on port 8443. The kernel sends a TCP RST packet ("Connection refused").
+- Key Viva Principle: DNS is merely a name directory, NOT a connection guarantee. If a DNS record points to the wrong machine, name lookup succeeds but transport connection fails.
+- Remediation: Person A restores DNS record:
+  ./personA/dns/setup_dns.sh 10.7.3.128
+  sudo dnsmasq -C personA/dns/dnsmasq.conf -d
+  On client D: sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
