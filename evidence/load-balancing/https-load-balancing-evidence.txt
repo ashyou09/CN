@@ -1,0 +1,32 @@
+=== Six Sequential HTTPS Requests Testing Nginx Round-Robin (Task D) ===
+Domain: https://app.teamX.test:8443/api/status
+Edge IP: 10.7.3.128
+
+Request 1: B
+Request 2: A
+Request 3: B
+Request 4: A
+Request 5: B
+Request 6: A
+
+=== Full Response Headers for Request 1 (Backend B) ===
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+Date: Fri, 02 Oct 2026 12:15:05 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 68
+Connection: keep-alive
+X-Powered-By: Express
+X-Backend: B
+ETag: "44-uCTxrIRH8hvYMgO242WfOEw+Nws"
+
+=== Full Response Headers for Request 2 (Backend A) ===
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+Date: Fri, 02 Oct 2026 12:15:06 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 68
+Connection: keep-alive
+X-Powered-By: Express
+X-Backend: A
+ETag: "44-MsWTvKxNwUw5jTbU7xK6+pnbaPw"
