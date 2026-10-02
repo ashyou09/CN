@@ -6,3 +6,68 @@
 /* Animated, evidence-aware four-Mac network diagram */
 .journey{padding:0;background:transparent;border:0;box-shadow:none}.flow-shell{background:#fff;border:1px solid #d9e2eb;border-radius:15px;box-shadow:0 18px 45px rgba(21,41,69,.07);overflow:hidden}.flow-toolbar{background:#16283f;color:#f6faff;min-height:65px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px}.flow-toolbar>div:first-child{display:flex;align-items:center;gap:10px}.flow-toolbar strong{font-size:13px}.flow-live-dot{height:8px;width:8px;border-radius:50%;background:#50ddad;box-shadow:0 0 0 4px rgba(80,221,173,.14)}.flow-mode{font:10px ui-monospace,monospace;color:#9fb5ce;border-left:1px solid #486077;padding-left:11px;margin-left:2px}.flow-toolbar-actions{display:flex;gap:8px}.flow-toolbar .button{font-size:11px;padding:9px 12px}.flow-toolbar .secondary{background:#2c425e;color:#e9f3ff;border-color:#47617c}.flow-toolbar .secondary:hover{background:#385476}.flow-toolbar .primary{background:#5d91ff}.diagram-scroll{overflow-x:auto;background:radial-gradient(circle at 49% 49%,#eef5ff 0%,#f7f9fc 48%,#f4f7fb 100%)}.flow-diagram{position:relative;width:100%;aspect-ratio:1000/510;overflow:hidden;background-image:linear-gradient(#dfe8f24d 1px,transparent 1px),linear-gradient(90deg,#dfe8f24d 1px,transparent 1px);background-size:25px 25px}.flow-lines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.route{fill:none;stroke:#a6b8cd;stroke-width:2.3;stroke-dasharray:6 7;stroke-linecap:round;transition:stroke .15s,stroke-width .15s}.route.travelling{stroke:#4d86fc;stroke-width:4;stroke-dasharray:none}.machine,.client-chip{position:absolute;z-index:2;background:#fff;border:1px solid #d4dfeb;box-shadow:0 10px 30px rgba(26,51,82,.11);transition:transform .2s,border-color .2s,box-shadow .2s}.machine{width:21%;min-height:24%;border-radius:12px;padding:13px 14px;display:flex;flex-direction:column;gap:10px}.machine.active,.client-chip.active{transform:translateY(-3px);border-color:#5286f6;box-shadow:0 0 0 4px #dce9ff,0 17px 34px #2e67ad30}.machine-dns{left:7%;top:7%}.machine-edge{left:42%;top:37%;width:20%;border-color:#9dbcf9}.machine-a{left:79%;top:7%}.machine-b{left:79%;top:65%}.machine-person{font:700 clamp(9px,.9vw,11px) ui-monospace,monospace;letter-spacing:.07em;color:#6582a9}.machine-person b{color:#afbdcc}.machine-main{display:flex;align-items:center;gap:10px}.machine-symbol{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border-radius:9px;background:#eaf1ff;color:#2862cc;font-size:15px;font-weight:800}.machine-dns .machine-symbol{background:#f1ebff;color:#7957c5}.machine-a .machine-symbol{background:#def7ed;color:#1e9168}.machine-b .machine-symbol{background:#e9f5ff;color:#237bb6}.machine-main div{display:flex;flex-direction:column;min-width:0}.machine-main strong{font-size:clamp(12px,1.15vw,15px);line-height:1.25;white-space:nowrap}.machine-main div span{font-size:clamp(9px,.85vw,11px);color:#788aa0;white-space:nowrap}.machine code{border-top:1px solid #e9eef4;margin-top:auto;padding-top:8px;color:#3973c8;font-size:clamp(9px,.85vw,11px)}.client-chip{left:9%;top:69%;width:18%;border-radius:10px;display:flex;gap:9px;align-items:center;padding:11px}.client-icon{font-size:17px;color:#3879e2;background:#e9f1ff;border-radius:8px;height:31px;width:31px;display:grid;place-items:center}.client-chip div{min-width:0;display:flex;flex-direction:column}.client-chip strong{font-size:12px}.client-chip div span{font-size:10px;color:#8393a4;white-space:nowrap}.flow-label{position:absolute;z-index:1;color:#6f83a0;background:#f7f9fc;box-shadow:0 0 0 4px #f7f9fc;border-radius:2px;font:700 9px ui-monospace,monospace;letter-spacing:.08em;white-space:nowrap}.label-dns{left:4%;top:55%}.label-edge{left:31%;top:62%}.label-upstream{left:66%;top:45%}.flow-bottom{border-top:1px solid #e4eaf2;display:grid;grid-template-columns:minmax(240px,1.2fr) minmax(0,1fr);gap:20px;padding:18px 21px}.flow-status{display:flex;flex-direction:column;gap:3px}.flow-status>span{font:700 10px ui-monospace,monospace;letter-spacing:.1em;color:#4a79d2;text-transform:uppercase}.flow-status strong{font-size:14px;line-height:1.4}.flow-status small{font-size:11px;color:#718198;line-height:1.5}.flow-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.flow-steps span{font-size:10px;color:#98a7ba;background:#f4f6f9;border-radius:5px;padding:5px 7px;white-space:nowrap}.flow-steps b{font:700 9px ui-monospace,monospace;margin-right:6px}.flow-steps span.current{color:#195fca;background:#e4efff}.flow-steps span.done{color:#29816a;background:#e8f7f1}.flow-raw{margin-top:7px}.flow-raw summary{font-size:11px;font-weight:650;color:#2867ce;cursor:pointer}.flow-raw pre{max-height:250px;overflow:auto;background:#142338;color:#dce9f6;border-radius:6px;padding:12px;font-size:10px;white-space:pre-wrap;overflow-wrap:anywhere}.map-caption{margin:10px 3px 0;font-size:11px;color:#8392a5}@media(max-width:1000px){.machine{padding:10px}.machine-symbol{height:27px;width:27px;flex-basis:27px}.flow-bottom{grid-template-columns:1fr}.flow-steps{grid-template-columns:repeat(6,minmax(0,1fr))}}@media(max-width:600px){.flow-toolbar{align-items:flex-start;flex-direction:column}.flow-toolbar-actions{width:100%}.flow-toolbar-actions .button{flex:1}.flow-steps{grid-template-columns:repeat(3,minmax(0,1fr))}.flow-diagram{min-width:760px}.flow-shell{margin-inline:-4px}}
 .machine-main div span,.client-chip div span{white-space:normal;line-height:1.3;overflow-wrap:anywhere}.machine code{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Failure demonstration bar */
+.failure-scenario-bar{background:#0e1c2e;border-top:1px solid #20354e;padding:10px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.failure-bar-label{font:700 10px ui-monospace,monospace;color:#f39c12;letter-spacing:.08em;white-space:nowrap}
+.failure-buttons{display:flex;gap:7px;flex-wrap:wrap}
+.fail-btn{background:#1a2b3f;border:1px solid #304764;color:#cad5e3;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:600;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:6px}
+.fail-btn:hover{background:#233954;color:#fff;border-color:#48678e}
+.fail-btn.active{background:#2564e8;color:#fff;border-color:#5c91fc;box-shadow:0 0 10px rgba(37,100,232,.35)}
+.fail-btn.btn-warning.active{background:#d97706;border-color:#f59e0b;box-shadow:0 0 10px rgba(217,119,6,.4)}
+.fail-btn.btn-danger.active{background:#dc2626;border-color:#ef4444;box-shadow:0 0 10px rgba(220,38,38,.4)}
+
+/* Failure states in the network diagram */
+.machine.node-failed{border-color:#ef4444!important;background:#fff5f5!important;box-shadow:0 0 0 4px #fee2e2,0 12px 28px rgba(239,68,68,.25)!important;animation:shake .45s ease}
+.machine.node-failed .machine-symbol{background:#fee2e2!important;color:#dc2626!important}
+.machine.node-failed code{color:#dc2626!important;font-weight:bold}
+.machine.node-failover{border-color:#10b981!important;box-shadow:0 0 0 4px #d1fae5,0 12px 28px rgba(16,185,129,.25)!important}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+
+dialog{z-index:10000;box-shadow:0 25px 70px rgba(0,0,0,.45)}
+dialog::backdrop{z-index:9999;background:rgba(10,22,35,.75);backdrop-filter:blur(3px)}
+@media(min-width:851px){
+  dialog{position:fixed;top:50%;left:calc(248px + (100vw - 248px) / 2);transform:translate(-50%, -50%);margin:0;max-width:calc(100vw - 280px)}
+}
+@media(max-width:850px){
+  dialog{position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);margin:0;width:94vw;max-width:94vw}
+}
+#packets{scroll-margin-top:30px}
+#packets .packet-toolbar{margin-top:8px}
+.packet-toolbar{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid #e2e8f0;flex-wrap:wrap}
+.packet-status-text{font-size:12px;color:#64748b;font-weight:500;margin-left:auto}
+.empty-capture{padding:50px 20px;text-align:center;background:#f8fafc;border:2px dashed #cbd5e1;border-radius:12px;color:#475569;margin-top:10px}
+.empty-capture .empty-icon{font-size:36px;color:#94a3b8;margin-bottom:10px}
+.empty-capture h3{margin:0 0 6px;font-size:17px;color:#1e293b}
+.empty-capture p{margin:0;font-size:13px;color:#64748b}
+
+.capture-loading{padding:50px 20px;text-align:center;background:#f8fafc;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.spinner{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#2564e8;border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.capture-results{display:flex;flex-direction:column;gap:12px;min-height:0;flex:1}
+.capture-summary-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f1f5f9;border-radius:8px;font-size:12px;color:#334155}
+.packet-filters{display:flex;gap:6px}
+.packet-filters .filter{padding:4px 8px;font-size:10px}
+.packet-table-wrap{border:1px solid #cbd5e1;border-radius:8px;overflow:auto;max-height:360px;background:#fff}
+.wireshark-table{width:100%;border-collapse:collapse;font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.wireshark-table th{background:#e2e8f0;color:#334155;text-align:left;padding:7px 10px;font-weight:700;position:sticky;top:0;z-index:2;border-bottom:1px solid #cbd5e1}
+.wireshark-table td{padding:6px 10px;border-bottom:1px solid #f1f5f9;white-space:nowrap;cursor:pointer}
+.wireshark-table tr:hover td{background:#e0f2fe!important}
+.wireshark-table tr.selected td{background:#bae6fd!important;color:#0369a1;font-weight:600}
+.badge-proto{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
+.proto-dns{background:#e0f2fe;color:#0284c7}
+.proto-tcp{background:#f1f5f9;color:#475569}
+.proto-tls{background:#f3e8ff;color:#9333ea}
+.proto-http{background:#dcfce7;color:#16a34a}
+.proto-raw{background:#fef2f2;color:#dc2626}
+
+.packet-inspector{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:12px 14px;overflow:hidden;display:flex;flex-direction:column;gap:6px}
+.inspector-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;color:#38bdf8}
+.inspector-head small{color:#94a3b8;font-weight:400}
+.packet-inspector pre{margin:0;max-height:160px;overflow:auto;font-size:11px;line-height:1.5;color:#cbd5e1;font-family:ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+
+
+/* Audit UI: distinguish command events from illustrative motion. */
+.flow-toolbar,.flow-toolbar-actions{flex-wrap:wrap}.flow-toolbar-actions{gap:6px}.scenario-scope{font-size:11px;color:#64758b;margin:12px 18px 8px}.flow-shell>#apply-fault{margin:0 18px 12px;font-size:11px}.flow-events{list-style:none;margin:12px 0 0;padding:0;max-height:160px;overflow:auto;font:10px/1.6 ui-monospace,monospace}.flow-events li{padding:4px 7px;border-left:2px solid #a5b7d0;margin-bottom:4px;background:#f6f8fb}.flow-events .passed{border-color:#229774}.flow-events .failed{border-color:#c36454}.flow-live-dot{background:#a6b9d2;box-shadow:none}.flow-steps span{white-space:normal}.packet-table-wrap{overflow-x:auto}.fail-btn:disabled{opacity:.5;cursor:wait}
+@media(prefers-reduced-motion:reduce){.machine.node-failed{animation:none!important}}

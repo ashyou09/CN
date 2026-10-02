@@ -1,0 +1,32 @@
+=== Nginx Round-Robin Load Balancing Test ===
+Fri Oct  2 17:26:15 IST 2026
+--- Request 1 ---
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+X-Backend: A
+{"backend":"A","status":"ok","timestamp":"2026-10-02T11:56:15.308Z"}
+--- Request 2 ---
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+X-Backend: B
+{"backend":"B","status":"ok","timestamp":"2026-10-02T11:56:15.091Z"}
+--- Request 3 ---
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+X-Backend: A
+{"backend":"A","status":"ok","timestamp":"2026-10-02T11:56:15.408Z"}
+--- Request 4 ---
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+X-Backend: B
+{"backend":"B","status":"ok","timestamp":"2026-10-02T11:56:15.177Z"}
+--- Request 5 ---
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+X-Backend: A
+{"backend":"A","status":"ok","timestamp":"2026-10-02T11:56:15.511Z"}
+--- Request 6 ---
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+X-Backend: B
+{"backend":"B","status":"ok","timestamp":"2026-10-02T11:56:15.304Z"}

@@ -12,7 +12,7 @@ Fill in this table when all 4 Macs are connected to the team LAN / Wi-Fi segment
 | **IPv4 Address** | `10.7.17.94` | `10.7.3.128` | `10.7.6.84` | `10.7.17.147` |
 | **Subnet Mask** | `255.255.224.0` (`/19`) | `255.255.224.0` (`/19`) | `255.255.224.0` (`/19`) | `255.255.224.0` (`/19`) |
 | **Default Gateway**| `10.7.0.1` | `10.7.0.1` | `10.7.0.1` | `10.7.0.1` |
-| **MAC Address** | `46:1d:da:58:a4:fb` | `fe:ce:ae:d9:87:58` | `a6:68:f6:cc:1c:db` | `52:19:ac:c7:60:a3` |
+| **MAC Address** | `46:1d:da:58:a4:fb` | `f6:bf:22:4f:e6:62` | `5e:7f:95:17:c2:ab` | `72:1f:ac:57:17:62` |
 | **Open Service Port**| `53` (UDP/TCP) | `8080`, `8443` | `3001` | `3002` |
 
 ---
@@ -45,9 +45,8 @@ arp -a
 All machines must verify reachability before starting higher layer services:
 
 | From \ To | Mac 1 (`10.7.17.94`) | Mac 2 (`10.7.3.128`) | Mac 3 (`10.7.6.84`) | Mac 4 (`10.7.17.147`) |
-| :--- | :---: | :---: | :---: | :---: |
 | **Mac 1** | — | [x] PASS | [x] PASS | [x] PASS |
-| **Mac 2** | [ ] PASS | — | [ ] PASS | [ ] PASS |
+| **Mac 2** | [x] PASS | — | [x] PASS | [x] PASS |
 | **Mac 3** | [x] PASS | [x] PASS | — | [x] PASS |
 | **Mac 4** | [x] PASS | [x] PASS | [x] PASS | — |
 

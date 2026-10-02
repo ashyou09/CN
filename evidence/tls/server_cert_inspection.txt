@@ -1,0 +1,10 @@
+=== Server Certificate Inspection ===
+notBefore=Sep 28 10:03:07 2026 GMT
+notAfter=Sep 28 10:03:07 2027 GMT
+subject=C = IN, ST = Karnataka, L = Bengaluru, O = TeamX, OU = NetworkLab, CN = app.teamX.test
+issuer=C = IN, ST = Karnataka, L = Bengaluru, O = TeamX, OU = NetworkLab, CN = TeamX Local CA
+X509v3 Subject Alternative Name: 
+    DNS:app.teamX.test, DNS:api.teamX.test, DNS:localhost, IP Address:127.0.0.1
+
+=== Certificate Chain Verification ===
+personB/tls/server.crt: OK

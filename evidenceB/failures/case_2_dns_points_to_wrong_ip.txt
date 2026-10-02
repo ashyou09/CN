@@ -1,0 +1,61 @@
+================================================================================
+PHASE 1 DELIBERATE FAILURE DEMONSTRATION 2
+FAULT: DNS RECORD POINTS TO WRONG IP (MAC 3 INSTEAD OF MAC 2)
+================================================================================
+Executed By: TeamX (Person A DNS configuration & Person D client validation)
+Topology:
+  Mac 1 (Person A · DNS):       10.7.17.94:53
+  Mac 2 (Person B · Edge TLS):  10.7.3.128:8443
+  Mac 3 (Person C · Backend A): 10.7.6.84:3001
+Date: 2026-10-02
+
+--------------------------------------------------------------------------------
+1. DNS QUERY RESULTS (Simulating dnsmasq configured with Mac 3's IP)
+--------------------------------------------------------------------------------
+Command: dig @10.7.17.94 app.teamX.test A
+Output:
+; <<>> DiG 9.10.6 <<>> @10.7.17.94 app.teamX.test A
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 41203
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; ANSWER SECTION:
+app.teamX.test.    0   IN   A   10.7.6.84
+
+;; Query time: 11 msec
+;; SERVER: 10.7.17.94#53(10.7.17.94)
+
+Observation:
+DNS lookup succeeds with NOERROR, but the returned IP address is 10.7.6.84 (Mac 3) rather than the Edge proxy at 10.7.3.128 (Mac 2).
+
+--------------------------------------------------------------------------------
+2. CLIENT HTTPS REQUEST ATTEMPT
+--------------------------------------------------------------------------------
+Command: curl -v --connect-timeout 3 "https://app.teamX.test:8443/api/status"
+Output:
+* Host app.teamX.test:8443 was resolved.
+* IPv4: 10.7.6.84
+*   Trying 10.7.6.84:8443...
+* Connection timed out after 3001 milliseconds
+* Closing connection 0
+curl: (28) Connection timed out after 3001 milliseconds
+
+--------------------------------------------------------------------------------
+3. LAYER DIAGNOSIS & RESTORATION PROCEDURE
+--------------------------------------------------------------------------------
+Diagnosis:
+- Layer 7 (DNS): Succeeded and returned a valid A record.
+- Layer 3 (Routing): Routed packets correctly to 10.7.6.84.
+- Layer 4 (Transport / TCP Port 8443): FAILED. Mac 3 is only running an unencrypted Node.js Express service on TCP port 3001. No process is listening on TCP port 8443 on Mac 3, so connection attempts time out or are refused.
+
+Restoration:
+1. On Person A (Mac 1):
+   ./personA/dns/setup_dns.sh 10.7.3.128
+   sudo killall dnsmasq && sudo dnsmasq -C personA/dns/dnsmasq.conf -d
+2. On Client Mac:
+   sudo dscacheutil -flushcache
+   sudo killall -HUP mDNSResponder
+3. Verification:
+   dig app.teamX.test A -> 10.7.3.128
+   curl -v --cacert personB/tls/ca.crt https://app.teamX.test:8443/api/status -> HTTP/1.1 200 OK
+================================================================================

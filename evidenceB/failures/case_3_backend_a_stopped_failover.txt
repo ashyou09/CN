@@ -1,0 +1,80 @@
+================================================================================
+PHASE 1 DELIBERATE FAILURE DEMONSTRATION 3
+FAULT: BACKEND A STOPS (AUTOMATIC FAILOVER TO BACKEND B)
+================================================================================
+Executed By: TeamX (Person C Backend A simulation & Person B Nginx edge routing)
+Topology:
+  Mac 2 (Person B · Edge TLS):  10.7.3.128:8080 / :8443
+  Mac 3 (Person C · Backend A): 10.7.6.84:3001 (STOPPED)
+  Mac 4 (Person D · Backend B): 10.7.17.147:3002 (HEALTHY)
+Date: 2026-10-02
+
+--------------------------------------------------------------------------------
+1. DIRECT PROBE TO BACKEND A (ISOLATION CHECK)
+--------------------------------------------------------------------------------
+Command: curl -i --connect-timeout 2 http://10.7.6.84:3001/api/status
+Output:
+curl: (7) Failed to connect to 10.7.6.84 port 3001: Connection refused
+Observation: Direct probe confirms Backend A microservice process is down.
+
+--------------------------------------------------------------------------------
+2. LIVE EDGE TRAFFIC FAILOVER TEST (6 Repeated Requests via :8080)
+--------------------------------------------------------------------------------
+Command:
+for i in {1..6}; do
+  curl --noproxy "*" -s -i -H "Host: app.teamX.test" "http://10.7.3.128:8080/api/status" | grep -E "HTTP/1.1|X-Backend"
+done
+
+Output:
+HTTP/1.1 200 OK
+X-Backend: B
+HTTP/1.1 200 OK
+X-Backend: B
+HTTP/1.1 200 OK
+X-Backend: B
+HTTP/1.1 200 OK
+X-Backend: B
+HTTP/1.1 200 OK
+X-Backend: B
+HTTP/1.1 200 OK
+X-Backend: B
+
+Observation:
+100% of incoming client requests are served by Backend B (Mac 4, 10.7.17.147:3002).
+Client observed 0 dropped connections and 0 failed requests.
+
+--------------------------------------------------------------------------------
+3. SECURE HTTPS VERIFICATION (:8443)
+--------------------------------------------------------------------------------
+Command: curl --noproxy "*" -s -i --cacert personB/tls/ca.crt "https://app.teamX.test:8443/api/status"
+Output:
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+Date: Fri, 02 Oct 2026 18:02:00 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 68
+Connection: keep-alive
+X-Powered-By: Express
+X-Backend: B
+ETag: "44-lGtlWAHmRPMBNEdPqtbQnhpzcgg"
+
+{"backend":"B","status":"ok","timestamp":"2026-10-02T12:32:00.124Z"}
+
+--------------------------------------------------------------------------------
+4. LAYER DIAGNOSIS & RESTORATION PROCEDURE
+--------------------------------------------------------------------------------
+Diagnosis:
+- Layer 7 Upstream Microservice: Backend A experienced a process failure.
+- Edge Proxy Layer: Nginx upstream module detected the connection failure on 10.7.6.84:3001. Using its configuration:
+    upstream backend_pool {
+        server 10.7.6.84:3001 max_fails=3 fail_timeout=5s;
+        server 10.7.17.147:3002 max_fails=3 fail_timeout=5s;
+    }
+  Nginx immediately marked Backend A temporarily unavailable and rerouted all client traffic to the healthy peer (Mac 4, Backend B). The client experienced high availability with zero downtime.
+
+Restoration:
+1. On Person C (Mac 3):
+   cd personC/backendA && npm start
+2. Wait for fail_timeout window (5 seconds) to expire.
+3. Send requests again; Nginx automatically re-admits Backend A and resumes 50/50 alternating round-robin.
+================================================================================

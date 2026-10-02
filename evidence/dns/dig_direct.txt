@@ -1,0 +1,44 @@
+=== 1. Direct query to Person A (dig @10.7.17.94) ===
+
+; <<>> DiG 9.10.6 <<>> @10.7.17.94 app.teamX.test A
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 23104
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;app.teamX.test.			IN	A
+
+;; ANSWER SECTION:
+app.teamX.test.		0	IN	A	10.7.3.128
+
+;; Query time: 21 msec
+;; SERVER: 10.7.17.94#53(10.7.17.94)
+;; WHEN: Fri Oct 02 17:39:09 IST 2026
+;; MSG SIZE  rcvd: 59
+
+
+
+; <<>> DiG 9.10.6 <<>> @10.7.17.94 api.teamX.test A
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 64138
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;api.teamX.test.			IN	A
+
+;; ANSWER SECTION:
+api.teamX.test.		0	IN	A	10.7.3.128
+
+;; Query time: 14 msec
+;; SERVER: 10.7.17.94#53(10.7.17.94)
+;; WHEN: Fri Oct 02 17:39:09 IST 2026
+;; MSG SIZE  rcvd: 59
+

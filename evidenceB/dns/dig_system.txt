@@ -1,0 +1,42 @@
+=== 3. System query without @ (dig app.teamX.test) ===
+
+; <<>> DiG 9.10.6 <<>> app.teamX.test A
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 8938
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;app.teamX.test.			IN	A
+
+;; ANSWER SECTION:
+app.teamX.test.		0	IN	A	10.7.3.128
+
+;; Query time: 54 msec
+;; SERVER: 10.7.17.94#53(10.7.17.94)
+;; WHEN: Fri Oct 02 17:39:09 IST 2026
+;; MSG SIZE  rcvd: 59
+
+
+
+; <<>> DiG 9.10.6 <<>> api.teamX.test A
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 58249
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;api.teamX.test.			IN	A
+
+;; ANSWER SECTION:
+api.teamX.test.		0	IN	A	10.7.3.128
+
+;; Query time: 18 msec
+;; SERVER: 10.7.17.94#53(10.7.17.94)
+;; WHEN: Fri Oct 02 17:39:09 IST 2026
+;; MSG SIZE  rcvd: 59
+

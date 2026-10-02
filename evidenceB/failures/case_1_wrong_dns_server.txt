@@ -1,0 +1,65 @@
+================================================================================
+PHASE 1 DELIBERATE FAILURE DEMONSTRATION 1
+FAULT: WRONG DNS RESOLVER / DNS SERVER UNREACHABLE
+================================================================================
+Executed By: TeamX (Person B / Mac 2 host & Person D client validation)
+Topology:
+  Mac 1 (Person A · DNS):      10.7.17.94:53
+  Mac 2 (Person B · Edge TLS): 10.7.3.128:8443
+  Client Network Interface:    en0
+Date: 2026-10-02
+
+--------------------------------------------------------------------------------
+1. NETWORK LAYER CHECK (ICMP Ping to Edge IP 10.7.3.128)
+--------------------------------------------------------------------------------
+Command: ping -c 3 10.7.3.128
+Output:
+PING 10.7.3.128 (10.7.3.128): 56 data bytes
+64 bytes from 10.7.3.128: icmp_seq=0 ttl=64 time=0.213 ms
+64 bytes from 10.7.3.128: icmp_seq=1 ttl=64 time=0.336 ms
+64 bytes from 10.7.3.128: icmp_seq=2 ttl=64 time=0.181 ms
+
+--- 10.7.3.128 ping statistics ---
+3 packets transmitted, 3 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 0.181/0.243/0.336/0.067 ms
+
+Observation:
+Layer 3 (IP) reachability to the Edge machine is 100% operational with 0% packet loss.
+
+--------------------------------------------------------------------------------
+2. DNS RESOLUTION FAILURE (Client pointed to 127.0.0.1:53535)
+--------------------------------------------------------------------------------
+Command: dig @127.0.0.1 -p 53535 app.teamX.test A +time=2 +tries=1
+Output:
+
+; <<>> DiG 9.10.6 <<>> @127.0.0.1 -p 53535 app.teamX.test A +time=2 +tries=1
+; (1 server found)
+;; global options: +cmd
+;; connection timed out; no servers could be reached
+
+--------------------------------------------------------------------------------
+3. APPLICATION LAYER IMPACT (curl by domain name)
+--------------------------------------------------------------------------------
+Command: curl -v https://app.teamX.test:8443/api/status
+Output:
+* Could not resolve host: app.teamX.test
+* Closing connection 0
+curl: (6) Could not resolve host: app.teamX.test
+
+--------------------------------------------------------------------------------
+4. LAYER DIAGNOSIS & RESTORATION PROCEDURE
+--------------------------------------------------------------------------------
+Diagnosis:
+- Layer 1 (Physical/Wi-Fi): Up and connected to private LAN.
+- Layer 2 (Data Link): Ethernet frames passing normally.
+- Layer 3 (Network): IP reachability to Edge IP 10.7.3.128 confirmed via ICMP ping.
+- Layer 7 (DNS Resolution): FAILED. The client was configured with an invalid or dead resolver address (127.0.0.1:53535). Because DNS resolution aborts at Step 1, no TCP SYN packet is ever dispatched to the Edge.
+
+Restoration:
+Run on client Mac:
+  sudo networksetup -setdnsservers "Wi-Fi" 10.7.17.94
+  sudo dscacheutil -flushcache
+  sudo killall -HUP mDNSResponder
+Verification:
+  dig app.teamX.test A -> Status NOERROR, Answer: 10.7.3.128
+================================================================================

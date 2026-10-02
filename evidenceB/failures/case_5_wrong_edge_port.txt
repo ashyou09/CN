@@ -1,0 +1,60 @@
+================================================================================
+PHASE 1 DELIBERATE FAILURE DEMONSTRATION 5
+FAULT: WRONG DESTINATION PORT (TCP PORT 8444 INSTEAD OF 8443)
+================================================================================
+Executed By: TeamX (Person D client check against Person B Edge)
+Topology:
+  Mac 2 (Person B · Edge Host): 10.7.3.128
+  Configured HTTPS Port:        8443
+  Tested / Wrong Port:          8444
+Date: 2026-10-02
+
+--------------------------------------------------------------------------------
+1. NETWORK LAYER CHECK (IP Reachability Confirmed)
+--------------------------------------------------------------------------------
+Command: ping -c 3 10.7.3.128
+Output:
+PING 10.7.3.128 (10.7.3.128): 56 data bytes
+64 bytes from 10.7.3.128: icmp_seq=0 ttl=64 time=0.224 ms
+64 bytes from 10.7.3.128: icmp_seq=1 ttl=64 time=0.245 ms
+64 bytes from 10.7.3.128: icmp_seq=2 ttl=64 time=0.198 ms
+
+--- 10.7.3.128 ping statistics ---
+3 packets transmitted, 3 packets received, 0.0% packet loss
+
+Observation: Host is reachable; network routing and ARP are functioning.
+
+--------------------------------------------------------------------------------
+2. TRANSPORT LAYER PROBE (TCP Port 8444)
+--------------------------------------------------------------------------------
+Command: nc -vz 10.7.3.128 8444
+Output:
+nc: connectx to 10.7.3.128 port 8444 (tcp) failed: Connection refused
+
+Command: curl -v --connect-timeout 3 --noproxy "*" "https://10.7.3.128:8444/api/status"
+Output:
+*   Trying 10.7.3.128:8444...
+* connect to 10.7.3.128 port 8444 from 10.7.3.128 port 60589 failed: Connection refused
+* Failed to connect to 10.7.3.128 port 8444 after 23 ms: Could not connect to server
+* Closing connection 0
+curl: (7) Failed to connect to 10.7.3.128 port 8444 after 23 ms: Could not connect to server
+
+--------------------------------------------------------------------------------
+3. CONTROL PROBE (Configured Port 8443)
+--------------------------------------------------------------------------------
+Command: nc -vz 10.7.3.128 8443
+Output:
+Connection to 10.7.3.128 port 8443 [tcp] succeeded!
+
+--------------------------------------------------------------------------------
+4. LAYER DIAGNOSIS & RESTORATION PROCEDURE
+--------------------------------------------------------------------------------
+Diagnosis:
+- Layer 3 (Network): Operational (ICMP echo reply received, IP address is correct).
+- Layer 4 (Transport / TCP Port 8444): FAILED. The operating system kernel on Mac 2 receives the TCP SYN on port 8444. Because no application holds a listening socket on port 8444, the kernel immediately transmits a TCP RST (Reset) packet back to the client, triggering "Connection refused".
+
+Restoration:
+Connect to the designated, configured HTTPS port on Mac 2:
+  curl -i --cacert personB/tls/ca.crt https://app.teamX.test:8443/api/status
+Result: TLS handshake completes and HTTP 200 is returned.
+================================================================================

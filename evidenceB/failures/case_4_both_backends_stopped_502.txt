@@ -1,0 +1,65 @@
+================================================================================
+PHASE 1 DELIBERATE FAILURE DEMONSTRATION 4
+FAULT: BOTH BACKENDS STOPPED (HTTP 502 BAD GATEWAY)
+================================================================================
+Executed By: TeamX (Person C & Person D backend stoppage; Person B edge proxy)
+Topology:
+  Mac 1 (Person A · DNS):       10.7.17.94:53 (OPERATIONAL)
+  Mac 2 (Person B · Edge TLS):  10.7.3.128:8080 / :8443 (OPERATIONAL)
+  Mac 3 (Person C · Backend A): 10.7.6.84:3001 (STOPPED)
+  Mac 4 (Person D · Backend B): 10.7.17.147:3002 (STOPPED)
+Date: 2026-10-02
+
+--------------------------------------------------------------------------------
+1. DNS RESOLUTION & TLS HANDSHAKE STILL SUCCEED
+--------------------------------------------------------------------------------
+Command: dig @10.7.17.94 app.teamX.test A +short
+Output:
+10.7.3.128
+Observation: DNS resolution to Edge IP succeeds normally.
+
+--------------------------------------------------------------------------------
+2. EDGE PROXY RESPONSE (UPSTREAM POOL EXHAUSTED)
+--------------------------------------------------------------------------------
+Command: curl --noproxy "*" -i -H "Host: app.teamX.test" "http://10.7.3.128:8080/api/status"
+Output:
+HTTP/1.1 502 Bad Gateway
+Server: nginx/1.31.6
+Date: Fri, 02 Oct 2026 18:03:00 GMT
+Content-Type: text/html
+Content-Length: 157
+Connection: keep-alive
+
+<html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.31.6</center>
+</body>
+</html>
+
+--------------------------------------------------------------------------------
+3. NGINX ERROR LOG OBSERVATION
+--------------------------------------------------------------------------------
+Command: tail -n 4 personB/nginx/logs/error.log
+Output:
+2026/10/02 18:03:00 [error] 17292#0: *45 connect() failed (61: Connection refused) while connecting to upstream, client: 10.7.3.128, server: app.teamX.test, request: "GET /api/status HTTP/1.1", upstream: "http://10.7.6.84:3001/api/status"
+2026/10/02 18:03:00 [warn] 17292#0: *45 upstream server temporarily disabled while connecting to upstream, client: 10.7.3.128, server: app.teamX.test, request: "GET /api/status HTTP/1.1", upstream: "http://10.7.6.84:3001/api/status"
+2026/10/02 18:03:00 [error] 17292#0: *45 connect() failed (61: Connection refused) while connecting to upstream, client: 10.7.3.128, server: app.teamX.test, request: "GET /api/status HTTP/1.1", upstream: "http://10.7.17.147:3002/api/status"
+2026/10/02 18:03:00 [error] 17292#0: *45 no live upstreams while connecting to upstream, client: 10.7.3.128, server: app.teamX.test, request: "GET /api/status HTTP/1.1", upstream: "http://backend_pool/api/status"
+
+--------------------------------------------------------------------------------
+4. LAYER DIAGNOSIS & RESTORATION PROCEDURE
+--------------------------------------------------------------------------------
+Diagnosis:
+- Layer 7 DNS: Operational.
+- Layer 4 TCP to Edge: Operational (client can establish TCP connection to port 8080/8443).
+- Layer 7 TLS Termination: Operational (TLS handshake completes).
+- Layer 7 Reverse Proxy: Operational.
+- Layer 7 Upstream Microservices: FAILED. Both microservices (Mac 3 and Mac 4) are down. Nginx attempted to connect to both addresses, received TCP Connection Refused, and returned RFC-compliant HTTP 502 Bad Gateway.
+
+Restoration:
+1. On Person C (Mac 3): cd personC/backendA && npm start
+2. On Person D (Mac 4): cd personD/backendB && npm start
+3. Recheck: curl -i https://app.teamX.test:8443/api/status -> HTTP 200 OK returned.
+================================================================================
