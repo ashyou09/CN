@@ -1,0 +1,47 @@
+=== Failure Scenario 4: Both Upstream Backends Down (Task D, Stage 9) ===
+Owner: Person C and Person D stop their Node.js instances (Mac 3 :3001 and Mac 4 :3002).
+Observer: Person D executes request from client.
+
+1. Layer 7 DNS Resolution:
+$ dig @10.7.17.94 app.teamX.test A
+;; ANSWER SECTION:
+app.teamX.test.		0	IN	A	10.7.3.128
+;; Status: NOERROR (DNS is fully healthy)
+
+2. Layer 4 & Layer 5/6 Transport & TLS Handshake:
+$ curl -i -v --resolve "app.teamX.test:8443:10.7.3.128" "https://app.teamX.test:8443/api/status"
+* Connected to app.teamX.test (10.7.3.128) port 8443
+* SSL connection using TLSv1.3 / AEAD-AES256-GCM-SHA384
+* Server certificate: CN=app.teamX.test
+* SSL certificate verify ok.
+> GET /api/status HTTP/1.1
+> Host: app.teamX.test:8443
+
+3. Edge Nginx Response (HTTP 502 Bad Gateway):
+< HTTP/1.1 502 Bad Gateway
+< Server: nginx/1.31.6
+< Date: Fri, 02 Oct 2026 12:21:45 GMT
+< Content-Type: text/html
+< Content-Length: 157
+< Connection: keep-alive
+< 
+<html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.31.6</center>
+</body>
+</html>
+
+=== Diagnosis & Viva Defense ===
+- Boundary Isolation between Edge and Upstream:
+  - DNS (UDP 53) succeeds: Name resolved.
+  - TCP Handshake (TCP 8443) succeeds: Edge Nginx is running and accepting client sockets.
+  - TLS Handshake succeeds: Certificate valid and cipher negotiated.
+  - Layer 7 Application Failure: Nginx cannot connect to either upstream server (10.7.6.84:3001 or 10.7.17.147:3002). Nginx returns standard `502 Bad Gateway`.
+- Key Viva Principle:
+  502 Bad Gateway indicates that an intermediate proxy/gateway server received an invalid or null response from the upstream application server. It pinpoints failure to the application tier, completely exonerating DNS, IP routing, and TLS edge layers.
+- Remediation:
+  Restart backend servers on Mac 3 and Mac 4:
+  On C: cd personC/backendA && npm start
+  On D: cd personD/backendB && npm start

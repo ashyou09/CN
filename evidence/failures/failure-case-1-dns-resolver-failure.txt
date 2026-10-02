@@ -1,0 +1,25 @@
+=== Failure Scenario 1: DNS Resolver Failure (Task B/G, Stage 9) ===
+Owner: Person D (Mac 4)
+Action: Client configured to query invalid DNS resolver (127.0.0.1 where no DNS daemon is listening).
+
+1. Layer 7 DNS Query:
+$ dig @127.0.0.1 app.teamX.test A +time=1 +tries=1
+; <<>> DiG 9.10.6 <<>> @127.0.0.1 app.teamX.test A +time=1 +tries=1
+; (1 server found)
+;; global options: +cmd
+;; connection timed out; no servers could be reached
+
+2. Layer 3 (Network Layer) Reachability Check:
+$ ping -c 1 10.7.3.128
+PING 10.7.3.128 (10.7.3.128): 56 data bytes
+64 bytes from 10.7.3.128: icmp_seq=0 ttl=64 time=5.999 ms
+
+--- 10.7.3.128 ping statistics ---
+1 packets transmitted, 1 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 5.999/5.999/5.999/0.000 ms
+
+=== Diagnosis & Viva Defense ===
+- Layer 7 (DNS Resolver) fails: Client cannot resolve domain name to an IP address because the configured DNS server is unreachable.
+- Layer 3 (IP/ICMP) succeeds: Direct routing to Mac 2 (10.7.3.128) is functional with 0% loss.
+- Proves DNS is independent of IP routing. Without DNS, applications using domain names fail even though physical & network paths are fully open.
+- Remediation: Set DNS server back to Mac 1 IP (10.7.17.94).

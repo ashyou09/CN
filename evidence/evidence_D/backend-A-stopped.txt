@@ -1,0 +1,39 @@
+=== Failure Scenario 3: Single Backend Failure / Upstream Failover (Task D/C, Stage 9) ===
+Owner: Person C stops Backend A on Mac 3 (Ctrl+C); Person D sends requests.
+
+1. Client Sends Multiple Sequential Requests to Edge Proxy (10.7.3.128:8443):
+$ for i in 1 2 3 4 5; do
+    curl -sS -D - -o /dev/null --resolve "app.teamX.test:8443:10.7.3.128" "https://app.teamX.test:8443/api/status" | \
+      awk -v n="$i" 'BEGIN {printf "Request %s: ", n} tolower($1)=="x-backend:" {print $2}'
+  done
+
+Output:
+Request 1: B
+Request 2: B
+Request 3: B
+Request 4: B
+Request 5: B
+
+2. Full Headers from Failover Request:
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+Date: Fri, 02 Oct 2026 12:20:10 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 68
+Connection: keep-alive
+X-Powered-By: Express
+X-Backend: B
+ETag: "44-uCTxrIRH8hvYMgO242WfOEw+Nws"
+
+{"backend":"B","status":"ok","timestamp":"2026-10-02T12:20:10.412Z"}
+
+=== Diagnosis & Viva Defense ===
+- High Availability / Fault Tolerance Demonstrated:
+  Even though Backend Server A (Mac 3) is completely offline, client requests experience ZERO downtime and return HTTP 200 OK.
+- Nginx Layer 7 Health Checking:
+  When Nginx attempts to proxy the request upstream to 10.7.6.84:3001, it receives a TCP connection refusal or timeout. Nginx increments `fail_count` and immediately retries the request with the next available server in the `backend_pool` (Mac 4 Backend B:3002).
+- Key Viva Principle:
+  Reverse proxies decouple client access from backend application state. Fault isolation ensures failure in one server does not impact user availability.
+- Remediation:
+  On Mac 3: cd personC/backendA && npm start
+  Once back online and `fail_timeout=5s` expires, Nginx automatically resumes 50/50 round-robin balancing.
