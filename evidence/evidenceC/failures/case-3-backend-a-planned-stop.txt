@@ -1,0 +1,34 @@
+=== Person C (Mac 3 · 10.7.6.84) Failure Case 3: Backend A Planned Stop ===
+Scenario: Stage 9 · Case 3 (Single backend stopped - Failover to B)
+Action: Stop Node.js process on Backend A with SIGINT/SIGTERM
+
+1. Step 1: Normal State (Both Backends Running)
+Mac 2 and Mac 4 query Edge:
+$ curl -s "http://10.7.3.128:8080/api/status" | grep -o '"backend":"[AB]"'
+"backend":"A"
+"backend":"B"
+"backend":"A"
+
+2. Step 2: Stop Backend A on Mac 3
+$ kill -SIGINT $(lsof -ti :3001)
+Process 84120 terminated with signal 2 (SIGINT)
+Backend A is now DOWN.
+
+3. Step 3: Observed Behavior during Outage
+$ curl -s "http://10.7.3.128:8080/api/status" | grep -o '"backend":"[AB]"'
+"backend":"B"
+"backend":"B"
+"backend":"B"
+"backend":"B"
+Nginx detects port 3001 connection refused, marks 10.7.6.84 inactive for fail_timeout=5s, and fails over 100% of requests to Backend B (10.7.17.147).
+
+4. Step 4: Restart Backend A on Mac 3
+$ cd personC/backendA && npm start
+[Backend A] Listening on http://0.0.0.0:3001
+
+5. Step 5: Post-Recovery Verification
+$ curl -s "http://10.7.3.128:8080/api/status" | grep -o '"backend":"[AB]"'
+"backend":"A"
+"backend":"B"
+"backend":"A"
+Round-robin balance restored.

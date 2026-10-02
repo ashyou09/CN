@@ -3,11 +3,11 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
 
 const checks = [
   { id:'lan', number:'01', title:'LAN reachability', icon:'↔', description:'Can this machine reach the DNS host, both backends, and the gateway?', method:'ICMP ping from demo host', success:'Each target replies with packet loss below 100%.', caveat:'Probes originate on this demo host. This does not establish all-pair LAN reachability.', endpoint:null },
-  { id:'backend-a', number:'02', title:'Backend A service (Mac 3)', icon:'◫', description:'Does Person C answer directly on port 3001?', method:'HTTP GET http://10.7.6.84:3001/api/status', success:'HTTP 200 OK with header X-Backend: A.', caveat:'Direct probe bypasses Nginx and tests microservice isolation.', endpoint:'/api/test-direct-backend?backend=A' },
-  { id:'backend-b', number:'03', title:'Backend B service (Mac 4)', icon:'◫', description:'Does Person D answer directly on port 3002?', method:'HTTP GET http://10.7.17.147:3002/api/status', success:'HTTP 200 OK with header X-Backend: B.', caveat:'Direct probe bypasses Nginx and tests microservice isolation.', endpoint:'/api/test-direct-backend?backend=B' },
-  { id:'lb', number:'04', title:'Load distribution (Round-Robin)', icon:'⇉', description:'Does Nginx edge balance traffic across both backends?', method:'8 repeated GET /api/status requests via edge :8080', success:'Successful samples include both A and B. Exact order depends on concurrent traffic.', caveat:'When one upstream is excluded, verify every sampled request reached the remaining backend.', endpoint:'/api/test-lb?count=8' },
-  { id:'dns', number:'05', title:'Private DNS resolution', icon:'◎', description:'Do app.teamX.test and api.teamX.test resolve to Edge IP?', method:'Direct dig (@10.7.17.94) and system dig', success:'All four DNS probes return 10.7.3.128.', caveat:'Checks DNS answers from this host. Other client machines must be checked separately.', endpoint:'/api/test-dns' },
-  { id:'tls', number:'06', title:'HTTPS & TLS termination', icon:'◇', description:'Does edge serve valid HTTPS with private CA on :8443?', method:'curl --cacert ca.crt https://app.teamX.test:8443/api/status', success:'TLS handshake succeeds and returns HTTP 200.', caveat:'Bypasses DNS with --resolve to directly verify certificate chain.', endpoint:'/api/test-tls' },
+  { id:'backend-a', number:'02', title:'Backend A service (Mac 3 · Shreya)', icon:'◫', description:'Does Person C (Shreya) answer directly on port 3001?', method:'HTTP GET http://10.7.6.84:3001/api/status', success:'HTTP 200 OK with header X-Backend: A.', caveat:'Direct probe bypasses Nginx and tests microservice isolation.', endpoint:'/api/test-direct-backend?backend=A' },
+  { id:'backend-b', number:'03', title:'Backend B service (Mac 4 · Ranvendra)', icon:'◫', description:'Does Person D (Ranvendra) answer directly on port 3002?', method:'HTTP GET http://10.7.17.147:3002/api/status', success:'HTTP 200 OK with header X-Backend: B.', caveat:'Direct probe bypasses Nginx and tests microservice isolation.', endpoint:'/api/test-direct-backend?backend=B' },
+  { id:'lb', number:'04', title:'Load distribution (Round-Robin)', icon:'⇉', description:'Does Nginx edge on Mac 2 (Ashutosh) balance traffic across both backends?', method:'8 repeated GET /api/status requests via edge :8080', success:'Successful samples include both A and B. Exact order depends on concurrent traffic.', caveat:'When one upstream is excluded, verify every sampled request reached the remaining backend.', endpoint:'/api/test-lb?count=8' },
+  { id:'dns', number:'05', title:'Private DNS resolution (Mac 1 · Pankaj)', icon:'◎', description:'Do app.teamX.test and api.teamX.test resolve via Person A (Pankaj)?', method:'Direct dig (@10.7.17.94) and system dig', success:'All four DNS probes return 10.7.3.128.', caveat:'Checks DNS answers from this host. Other client machines must be checked separately.', endpoint:'/api/test-dns' },
+  { id:'tls', number:'06', title:'HTTPS & TLS termination (Mac 2 · Ashutosh)', icon:'◇', description:'Does edge serve valid HTTPS with private CA on :8443?', method:'curl --cacert ca.crt https://app.teamX.test:8443/api/status', success:'TLS handshake succeeds and returns HTTP 200.', caveat:'Bypasses DNS with --resolve to directly verify certificate chain.', endpoint:'/api/test-tls' },
   { id:'cache', number:'07', title:'Conditional HTTP caching', icon:'▥', description:'Does a repeat request with If-None-Match receive 304?', method:'GET /api/cached with ETag revalidation', success:'First request has ETag; second request returns 304 Not Modified.', caveat:'Proves HTTP conditional validation and bandwidth saving.', endpoint:'/api/test-cache' },
   { id:'trace', number:'08', title:'Named HTTPS request', icon:'⚡', description:'Does a complete request traverse DNS ➔ TLS Edge ➔ Upstream Backend?', method:'Full multi-protocol query from client to backend', success:'DNS matches the edge; verified HTTPS returns 200 with X-Backend.', caveat:'DNS and HTTPS command evidence. Packet capture is a separate requirement for Task G.', endpoint:'/api/trace-request' }
 ];
@@ -21,7 +21,7 @@ const failures = [
   ['Wrong destination port (8444)', 'fail-wrong-port', 'Address resolves and ping works; TCP connection is refused.', 'Connect to the configured edge port 8443.']
 ];
 
-let config, files = [], filter = 'all', runState = {}, logState = {}, checkedAt = {}, flowBusy = false;
+let config, files = [], filter = 'all', selectedPerson = 'all', runState = {}, logState = {}, checkedAt = {}, flowBusy = false;
 let currentScenario = 'normal', liveFault = 'normal';
 const pendingChecks = new Set();
 let auditBusy = false;
@@ -418,17 +418,62 @@ async function runAll() {
 
 function renderEvidence() {
   const cats = [['all', 'All files'], ['lan', 'LAN'], ['dns', 'DNS'], ['load-balancing', 'Load balancing'], ['tls', 'TLS'], ['caching', 'Caching'], ['wireshark', 'Packets'], ['failures', 'Failures']];
-  $('#evidence-filters').innerHTML = cats.map(([id, name]) =>
-    `<button class="filter ${filter === id ? 'active' : ''}" data-filter="${id}">${name} <span>${id === 'all' ? files.length : files.filter(f => f.category === id).length}</span></button>`
-  ).join('');
-  const shown = filter === 'all' ? files : files.filter(f => f.category === filter);
-  $('#evidence-list').innerHTML = shown.length ? shown.map(f =>
-    `<button class="evidence-row" data-file="${escapeHtml(f.path)}"><span class="file-icon">${/\.pcap/i.test(f.name) ? '◈' : /\.(png|jpe?g)$/i.test(f.name) ? '▧' : '▤'}</span><span class="file-info"><strong>${escapeHtml(f.name)}</strong><small>${escapeHtml(f.path)}</small></span><span class="file-meta">${Math.max(1, Math.round(f.bytes / 1024))} KB</span><span class="file-open">↗</span></button>`
-  ).join('') : '<div class="empty-evidence"><strong>No saved files in this category yet.</strong><p>Use the runbook to capture and save the missing proof.</p></div>';
+
+  // Update persona counts
+  const personCounts = {
+    all: files.length,
+    A: files.filter(f => f.person === 'A').length,
+    B: files.filter(f => f.person === 'B').length,
+    C: files.filter(f => f.person === 'C').length,
+    D: files.filter(f => f.person === 'D').length,
+    COMBINED: files.filter(f => f.person === 'COMBINED').length
+  };
+  const countAll = $('#count-person-all'); if (countAll) countAll.textContent = personCounts.all;
+  const countA = $('#count-person-a'); if (countA) countA.textContent = personCounts.A;
+  const countB = $('#count-person-b'); if (countB) countB.textContent = personCounts.B;
+  const countC = $('#count-person-c'); if (countC) countC.textContent = personCounts.C;
+  const countD = $('#count-person-d'); if (countD) countD.textContent = personCounts.D;
+  const countCombined = $('#count-person-combined'); if (countCombined) countCombined.textContent = personCounts.COMBINED;
+
+  // Filter by person
+  const personFiltered = selectedPerson === 'all'
+    ? files
+    : files.filter(f => f.person === selectedPerson);
+
+  // Render category filters with dynamic counts based on person selection
+  $('#evidence-filters').innerHTML = cats.map(([id, name]) => {
+    const cCount = id === 'all' ? personFiltered.length : personFiltered.filter(f => f.category === id).length;
+    return `<button class="filter ${filter === id ? 'active' : ''}" data-filter="${id}">${name} <span>${cCount}</span></button>`;
+  }).join('');
+
+  // Filter by category
+  const shown = filter === 'all' ? personFiltered : personFiltered.filter(f => f.category === filter);
+
+  $('#evidence-list').innerHTML = shown.length ? shown.map(f => {
+    const personKey = (f.person || 'shared').toLowerCase();
+    const pBadge = `<span class="badge-person ${personKey}">${escapeHtml(f.personName || `Person ${f.person}`)}</span>`;
+    const catBadge = `<span class="badge-cat">${escapeHtml(f.category)}</span>`;
+    const icon = /\.pcap/i.test(f.name) ? '◈' : /\.(png|jpe?g)$/i.test(f.name) ? '▧' : '▤';
+    const kb = Math.max(1, Math.round(f.bytes / 1024));
+    return `<button class="evidence-row" data-file="${escapeHtml(f.path)}">
+      <span class="file-icon">${icon}</span>
+      <span class="file-info">
+        <div class="file-header-row">
+          <strong>${escapeHtml(f.name)}</strong>
+          ${pBadge}
+          ${catBadge}
+        </div>
+        <small class="file-path">${escapeHtml(f.path)} · IP: ${escapeHtml(f.personIp || 'LAN')}</small>
+      </span>
+      <span class="file-meta">${kb} KB</span>
+      <span class="file-open">Inspect ↗</span>
+    </button>`;
+  }).join('') : '<div class="empty-evidence"><strong>No saved files match the current filters.</strong><p>Try switching member or category tabs to inspect existing artifacts.</p></div>';
+
   const covered = new Set(files.map(f => f.category)).size;
   $('#file-count').innerHTML = `${files.length} <small>files</small>`;
   $('#evidence-summary').textContent = `${covered} of 7 evidence categories have files`;
-  $('#evidence-coverage').textContent = `${covered}/7 categories covered`;
+  $('#evidence-coverage').textContent = `${covered}/7 categories covered across 4 team machines`;
 }
 
 async function loadEvidence() {
@@ -443,17 +488,17 @@ async function loadEvidence() {
 function showEvidence(file) {
   const d = $('#evidence-dialog');
   $('#evidence-title').textContent = file.name;
-  $('#evidence-path').textContent = file.path;
+  $('#evidence-path').textContent = `${file.personName ? file.personName + ' · ' : ''}${file.path}`;
   $('#evidence-download').href = file.url;
   const output = $('#evidence-output');
   output.textContent = 'Loading…';
   d.showModal();
-  if (/\.(txt|log|json)$/i.test(file.name)) {
+  if (/\.(txt|log|json|sh)$/i.test(file.name)) {
     fetch(file.url).then(r => r.text()).then(t => output.textContent = t).catch(e => output.textContent = e.message);
   } else if (/\.(png|jpe?g)$/i.test(file.name)) {
     output.innerHTML = `<img src="${file.url}" alt="${escapeHtml(file.name)}">`;
   } else {
-    output.textContent = 'Open the original file to inspect this evidence.';
+    output.textContent = 'Binary capture or archive. Click "Open original ↗" below to download or inspect in Wireshark.';
   }
 }
 
@@ -483,6 +528,16 @@ function setup() {
   });
   $('#run-all').addEventListener('click', runAll);
   $('#refresh-evidence').addEventListener('click', loadEvidence);
+  $('#persona-filters')?.addEventListener('click', e => {
+    const b = e.target.closest('[data-person]');
+    if (b) {
+      selectedPerson = b.dataset.person;
+      document.querySelectorAll('#persona-filters .persona-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.person === selectedPerson);
+      });
+      renderEvidence();
+    }
+  });
   $('#evidence-filters').addEventListener('click', e => {
     const b = e.target.closest('[data-filter]');
     if (b) { filter = b.dataset.filter; renderEvidence(); }

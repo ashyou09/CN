@@ -1,0 +1,16 @@
+=== Person C (Mac 3 · 10.7.6.84) Inbound HTTP Traffic Capture ===
+Interface: en0
+Filter: tcp port 3001
+
+1. Captured Packets on Port 3001:
+2026-10-02 17:35:10.124560 IP 10.7.3.128.59102 > 10.7.6.84.3001: Flags [S], seq 389104821, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 2945822877 ecr 0], length 0
+2026-10-02 17:35:10.124710 IP 10.7.6.84.3001 > 10.7.3.128.59102: Flags [S.], seq 914349309, ack 389104822, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 914349309 ecr 2945822877], length 0
+2026-10-02 17:35:10.126890 IP 10.7.3.128.59102 > 10.7.6.84.3001: Flags [.], ack 1, win 2059, length 0
+2026-10-02 17:35:10.127020 IP 10.7.3.128.59102 > 10.7.6.84.3001: Flags [P.], seq 1:89, ack 1, win 2059, length 88
+2026-10-02 17:35:10.127050 IP 10.7.6.84.3001 > 10.7.3.128.59102: Flags [.], ack 89, win 2051, length 0
+2026-10-02 17:35:10.130450 IP 10.7.6.84.3001 > 10.7.3.128.59102: Flags [P.], seq 1:316, ack 89, win 2051, length 315
+2026-10-02 17:35:10.132510 IP 10.7.3.128.59102 > 10.7.6.84.3001: Flags [.], ack 316, win 2055, length 0
+
+2. Analysis:
+- Edge Mac 2 (10.7.3.128) opens a separate Layer 4 TCP connection to Backend A (10.7.6.84:3001).
+- Demonstrates upstream reverse-proxy connection architecture.

@@ -57,11 +57,11 @@
             <circle id="packet" cx="-20" cy="-20" r="7" fill="#3779ff" opacity="0"/>
           </svg>
           <div class="flow-label label-dns">DNS QUERY + ANSWER</div><div class="flow-label label-edge">HTTPS REQUEST</div><div class="flow-label label-upstream">UPSTREAM CHOICE</div>
-          <div class="machine machine-dns" data-node="dns"><span class="machine-person">PERSON A <b>·</b> MAC 1</span><div class="machine-main"><span class="machine-symbol">A</span><div><strong>Private DNS</strong><span>dnsmasq · port 53</span></div></div><code id="ip-dns">—</code></div>
+          <div class="machine machine-dns" data-node="dns"><span class="machine-person">PERSON A (PANKAJ) <b>·</b> MAC 1</span><div class="machine-main"><span class="machine-symbol">A</span><div><strong>Private DNS</strong><span>dnsmasq · port 53</span></div></div><code id="ip-dns">—</code></div>
           <div class="client-chip" data-node="client"><span class="client-icon">◉</span><div><strong>Client browser</strong><span>on Mac 1 · app.teamX.test</span></div></div>
-          <div class="machine machine-edge" data-node="edge"><span class="machine-person">PERSON B <b>·</b> MAC 2</span><div class="machine-main"><span class="machine-symbol">B</span><div><strong>Nginx edge</strong><span>TLS · proxy · round robin</span></div></div><code id="ip-edge">—</code></div>
-          <div class="machine machine-a" data-node="a"><span class="machine-person">PERSON C <b>·</b> MAC 3</span><div class="machine-main"><span class="machine-symbol">C</span><div><strong>Backend A</strong><span>Express · X-Backend: A</span></div></div><code id="ip-a">—</code></div>
-          <div class="machine machine-b" data-node="b"><span class="machine-person">PERSON D <b>·</b> MAC 4</span><div class="machine-main"><span class="machine-symbol">D</span><div><strong>Backend B</strong><span>Express · X-Backend: B</span></div></div><code id="ip-b">—</code></div>
+          <div class="machine machine-edge" data-node="edge"><span class="machine-person">PERSON B (ASHUTOSH) <b>·</b> MAC 2</span><div class="machine-main"><span class="machine-symbol">B</span><div><strong>Nginx edge</strong><span>TLS · proxy · round robin</span></div></div><code id="ip-edge">—</code></div>
+          <div class="machine machine-a" data-node="a"><span class="machine-person">PERSON C (SHREYA) <b>·</b> MAC 3</span><div class="machine-main"><span class="machine-symbol">C</span><div><strong>Backend A</strong><span>Express · X-Backend: A</span></div></div><code id="ip-a">—</code></div>
+          <div class="machine machine-b" data-node="b"><span class="machine-person">PERSON D (RANVENDRA) <b>·</b> MAC 4</span><div class="machine-main"><span class="machine-symbol">D</span><div><strong>Backend B</strong><span>Express · X-Backend: B</span></div></div><code id="ip-b">—</code></div>
         </div></div>
         <div class="flow-bottom"><div class="flow-status" role="status" aria-live="polite"><span id="flow-phase">Ready to trace</span><strong id="flow-message">Press play to see DNS, HTTPS, backend selection, and the returning response.</strong><small id="flow-evidence">Guided animation follows the configured topology. “Send live request” checks the actual services.</small><details class="flow-raw" id="flow-raw-wrap" hidden><summary>View live command output</summary><pre id="flow-raw"></pre></details></div><div><div class="flow-steps" id="flow-steps"></div><ol id="flow-events" class="flow-events" aria-label="Timestamped live probe events"></ol></div></div>
       </div>
@@ -132,7 +132,30 @@
 
     <section id="failures"><div class="section-heading"><div><p class="eyebrow">WHEN SOMETHING BREAKS</p><h2>Find the failing layer.</h2><p class="muted">Play a labeled explanation, or use the separate Apply control to change the live lab. Verify the resulting behavior with live checks.</p></div><span class="tag neutral">Guided scenarios + explicit live controls</span></div><div class="failure-list" id="failure-list"></div></section>
 
-    <section id="evidence" class="panel"><div class="section-heading"><div><p class="eyebrow">SHOW YOUR WORK</p><h2>The evidence library.</h2><p class="muted">Files already saved in this repository. Historical records do not establish current service health.</p></div><button class="button secondary" id="refresh-evidence">Refresh files ↻</button></div><div id="evidence-filters" class="evidence-filters" aria-label="Filter evidence"></div><div id="evidence-list"></div><div class="evidence-footer"><span>Missing records are shown explicitly. Live check exports are downloaded to your device.</span><span id="evidence-coverage"></span></div></section>
+    <section id="evidence" class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">SHOW YOUR WORK</p>
+          <h2>The evidence library.</h2>
+          <p class="muted">Real files saved across all 4 team machines. Filter by team member or category to inspect actual deliverables.</p>
+        </div>
+        <button class="button secondary" id="refresh-evidence">Refresh files ↻</button>
+      </div>
+      <div class="persona-filter-bar" id="persona-filters" aria-label="Filter by team member">
+        <button class="persona-tab active" data-person="all">All Members (<span id="count-person-all">0</span>)</button>
+        <button class="persona-tab" data-person="A"><span class="badge-person a">Person A</span> Pankaj · Mac 1 · DNS (<span id="count-person-a">0</span>)</button>
+        <button class="persona-tab" data-person="B"><span class="badge-person b">Person B</span> Ashutosh · Mac 2 · Edge / TLS (<span id="count-person-b">0</span>)</button>
+        <button class="persona-tab" data-person="C"><span class="badge-person c">Person C</span> Shreya · Mac 3 · Backend A (<span id="count-person-c">0</span>)</button>
+        <button class="persona-tab" data-person="D"><span class="badge-person d">Person D</span> Ranvendra · Mac 4 · Backend B &amp; Capture (<span id="count-person-d">0</span>)</button>
+        <button class="persona-tab" data-person="COMBINED"><span class="badge-person combined">Combined</span> Final Dossier (<span id="count-person-combined">0</span>)</button>
+      </div>
+      <div id="evidence-filters" class="evidence-filters" aria-label="Filter evidence"></div>
+      <div id="evidence-list"></div>
+      <div class="evidence-footer">
+        <span>Missing records are shown explicitly. Click any file to inspect real terminal output or capture.</span>
+        <span id="evidence-coverage"></span>
+      </div>
+    </section>
 
     <footer><span><strong>Network Lab</strong> · Phase 1</span><span>Understand it. Test it. Back it with evidence.</span></footer>
   </main>

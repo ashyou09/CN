@@ -1,0 +1,19 @@
+=== Person C (Mac 3 · 10.7.6.84) DNS Resolution Check ===
+Resolver: Mac 1 (10.7.17.94:53)
+Domains: app.teamX.test, api.teamX.test
+
+$ dig @10.7.17.94 app.teamX.test A +noall +answer +stats
+app.teamX.test.		0	IN	A	10.7.3.128
+;; Query time: 4 msec
+;; SERVER: 10.7.17.94#53(10.7.17.94) (UDP)
+;; WHEN: Fri Oct 02 17:30:14 IST 2026
+;; MSG SIZE  rcvd: 59
+
+$ dig @10.7.17.94 api.teamX.test A +noall +answer +stats
+api.teamX.test.		0	IN	A	10.7.3.128
+;; Query time: 3 msec
+;; SERVER: 10.7.17.94#53(10.7.17.94) (UDP)
+;; WHEN: Fri Oct 02 17:30:16 IST 2026
+;; MSG SIZE  rcvd: 59
+
+RESULT: Both names correctly resolve to Edge Proxy IP (10.7.3.128).

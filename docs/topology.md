@@ -12,7 +12,8 @@
        |                                |                                |
 +------v-------+                 +------v-------+                 +------v-------+
 |    Mac 1     |                 |    Mac 2     |                 |    Mac 3     |
-|  (Person A)  |                 |  (Person B)  |                 |  (Person C)  |
+| Person A     |                 | Person B     |                 | Person C     |
+| (Pankaj)     |                 | (Ashutosh)   |                 | (Shreya)     |
 |  Private DNS |                 | Edge Reverse |                 |  Backend A   |
 |   (Port 53)  |                 | Proxy / TLS  |                 | (Port 3001)  |
 |   Client     |                 |  Load Bal.   |                 +--------------+
@@ -23,7 +24,8 @@
                                         |
                                  +------v-------+
                                  |    Mac 4     |
-                                 |  (Person D)  |
+                                 | Person D     |
+                                 | (Ranvendra)  |
                                  |  Backend B   |
                                  | (Port 3002)  |
                                  |   Client     |

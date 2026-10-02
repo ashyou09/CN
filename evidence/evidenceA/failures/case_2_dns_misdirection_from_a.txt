@@ -1,0 +1,41 @@
+=== Person A (Mac 1 · 10.7.17.94) Failure Case 2: DNS Misdirection ===
+Scenario: Stage 9 · Case 2 (DNS points to wrong IP)
+Action: Person A updates dnsmasq to point app.teamX.test to Backend A (10.7.6.84) instead of Edge (10.7.3.128)
+
+1. Step 1: Normal Configuration
+$ cat personA/dns/dnsmasq.conf | grep address
+address=/app.teamX.test/10.7.3.128
+address=/api.teamX.test/10.7.3.128
+
+2. Step 2: Apply Fault (Change to 10.7.6.84)
+$ ./personA/dns/setup_dns.sh 10.7.6.84
+Updated dnsmasq.conf with target IP: 10.7.6.84
+Restarting dnsmasq on Mac 1...
+$ dig @10.7.17.94 app.teamX.test A +short
+10.7.6.84
+
+3. Step 3: Client Observation (Mac 2 & Mac 4)
+Clients query app.teamX.test and attempt HTTPS connection:
+$ curl -v --connect-timeout 3 "https://app.teamX.test:8443/api/status"
+* Host app.teamX.test:8443 was resolved.
+* IPv4: 10.7.6.84
+* Trying 10.7.6.84:8443...
+* connect to 10.7.6.84 port 8443 failed: Connection refused
+* Failed to connect to app.teamX.test port 8443: Connection refused
+
+LAYER DIAGNOSIS:
+- Layer 3 (IP) and DNS resolve successfully to 10.7.6.84.
+- Layer 4 (TCP) fails with Connection Refused because Mac 3 (Backend A) does not listen on HTTPS port 8443.
+
+4. Step 4: Restore Configuration on Mac 1
+$ ./personA/dns/setup_dns.sh 10.7.3.128
+Updated dnsmasq.conf with target IP: 10.7.3.128
+Restarting dnsmasq...
+$ dig @10.7.17.94 app.teamX.test A +short
+10.7.3.128
+
+Clients flush mDNS cache:
+$ sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
+$ curl -s "https://app.teamX.test:8443/api/status"
+{"backend":"A","status":"ok"}
+Service fully restored.

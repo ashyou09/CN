@@ -1,0 +1,39 @@
+=== Person C (Mac 3 · 10.7.6.84) TLS Trust Verification ===
+Certificate Authority: personB/tls/ca.crt
+Target: https://app.teamX.test:8443/api/status
+
+1. CA Fingerprint Match:
+$ openssl x509 -in ca.crt -noout -fingerprint -sha256
+SHA256 Fingerprint=C4:8A:2F:91:0E:5B:3D:7A:1C:89:E2:40:9F:51:7A:BC:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22
+
+2. Native Curl Verification using CA root:
+$ curl -v --cacert ca.crt https://app.teamX.test:8443/api/status
+* Host app.teamX.test:8443 was resolved.
+* IPv4: 10.7.3.128
+* Connected to app.teamX.test (10.7.3.128) port 8443
+* ALPN: curl offers h2,http/1.1
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+* TLSv1.3 (IN), TLS handshake, Server hello (2):
+* TLSv1.3 (IN), TLS handshake, [certificate]:
+* Server certificate:
+*  subject: C=IN; ST=Haryana; L=Sonipat; O=TeamX; CN=app.teamX.test
+*  start date: Oct  2 11:00:00 2026 GMT
+*  expire date: Oct  2 11:00:00 2027 GMT
+*  subjectAltName: host "app.teamX.test" matched cert's "app.teamX.test"
+*  issuer: C=IN; ST=Haryana; L=Sonipat; O=TeamX; CN=TeamX Private Root CA
+*  SSL certificate verify ok.
+* Connected to app.teamX.test (10.7.3.128) port 8443
+> GET /api/status HTTP/1.1
+> Host: app.teamX.test:8443
+> User-Agent: curl/8.7.1
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< Server: nginx/1.27.0
+< Date: Fri, 02 Oct 2026 11:58:30 GMT
+< Content-Type: application/json; charset=utf-8
+< Content-Length: 68
+< Connection: keep-alive
+< X-Backend: A
+< 
+{"backend":"A","status":"ok","timestamp":"2026-10-02T11:58:30.401Z"}

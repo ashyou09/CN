@@ -71,3 +71,119 @@ dialog::backdrop{z-index:9999;background:rgba(10,22,35,.75);backdrop-filter:blur
 /* Audit UI: distinguish command events from illustrative motion. */
 .flow-toolbar,.flow-toolbar-actions{flex-wrap:wrap}.flow-toolbar-actions{gap:6px}.scenario-scope{font-size:11px;color:#64758b;margin:12px 18px 8px}.flow-shell>#apply-fault{margin:0 18px 12px;font-size:11px}.flow-events{list-style:none;margin:12px 0 0;padding:0;max-height:160px;overflow:auto;font:10px/1.6 ui-monospace,monospace}.flow-events li{padding:4px 7px;border-left:2px solid #a5b7d0;margin-bottom:4px;background:#f6f8fb}.flow-events .passed{border-color:#229774}.flow-events .failed{border-color:#c36454}.flow-live-dot{background:#a6b9d2;box-shadow:none}.flow-steps span{white-space:normal}.packet-table-wrap{overflow-x:auto}.fail-btn:disabled{opacity:.5;cursor:wait}
 @media(prefers-reduced-motion:reduce){.machine.node-failed{animation:none!important}}
+
+/* Persona Filter Tabs & Evidence Attribution */
+.persona-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.persona-tab {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  border-radius: 8px;
+  padding: 8px 13px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: all .16s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.persona-tab:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+.persona-tab.active {
+  background: #13243a;
+  color: #ffffff;
+  border-color: #13243a;
+  box-shadow: 0 3px 10px rgba(19,36,58,.22);
+}
+.persona-tab.active .badge-person {
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.badge-person {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.badge-person.a {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+.badge-person.b {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+.badge-person.c {
+  background: #d1fae5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+.badge-person.d {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+.badge-person.shared {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+.badge-person.combined {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.badge-cat {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+  border: 1px solid #e2e8f0;
+}
+.file-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+.file-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: #64748b;
+}
+.evidence-row .file-open {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2564e8;
+  padding: 4px 8px;
+  background: #eff6ff;
+  border-radius: 5px;
+  border: 1px solid #dbeafe;
+}
+.evidence-row:hover .file-open {
+  background: #2564e8;
+  color: #ffffff;
+}
+

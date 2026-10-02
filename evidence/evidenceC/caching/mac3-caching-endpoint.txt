@@ -1,0 +1,28 @@
+=== Person C (Mac 3 · 10.7.6.84) Backend A HTTP Caching Check ===
+Target: http://localhost:3001/api/cached
+
+1. Initial Request with Headers:
+$ curl -i http://localhost:3001/api/cached
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Content-Type: application/json; charset=utf-8
+Cache-Control: public, max-age=60
+ETag: "39-jxvt8kclwpAy7qZ0gJ/MRIVczo0"
+Content-Length: 57
+Date: Fri, 02 Oct 2026 12:02:10 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"message":"This is cached content","generatedAt":1727870530000}
+
+2. Conditional Revalidation (If-None-Match):
+$ curl -i -H 'If-None-Match: "39-jxvt8kclwpAy7qZ0gJ/MRIVczo0"' http://localhost:3001/api/cached
+HTTP/1.1 304 Not Modified
+X-Powered-By: Express
+Cache-Control: public, max-age=60
+ETag: "39-jxvt8kclwpAy7qZ0gJ/MRIVczo0"
+Date: Fri, 02 Oct 2026 12:02:14 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+RESULT: Backend A correctly generates ETag and returns HTTP 304 on cache revalidation.

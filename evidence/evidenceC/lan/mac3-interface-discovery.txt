@@ -1,0 +1,27 @@
+=== Person C (Mac 3 · 10.7.6.84) Network Interface Discovery ===
+Timestamp: Fri Oct  2 17:15:20 IST 2026
+Host: mac3.local
+Role: Backend Server A Lead
+
+$ route -n get default
+   route to: default
+destination: default
+       mask: default
+    gateway: 10.7.0.1
+  interface: en0
+      flags: <UP,GATEWAY,DONE,STATIC,PRCLONING>
+
+$ ipconfig getifaddr en0
+10.7.6.84
+
+$ ipconfig getoption en0 subnet_mask
+255.255.224.0
+
+$ ifconfig en0 | grep ether
+	ether a6:68:f6:cc:1c:db
+
+$ arp -a | grep "10.7\."
+? (10.7.0.1) at 00:00:5e:00:01:01 on en0 ifscope [ethernet]
+? (10.7.17.94) at 46:1d:da:58:a4:fb on en0 ifscope [ethernet]
+? (10.7.3.128) at fe:ce:ae:d9:87:58 on en0 ifscope [ethernet]
+? (10.7.17.147) at 52:19:ac:c7:60:a3 on en0 ifscope [ethernet]

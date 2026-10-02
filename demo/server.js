@@ -33,21 +33,48 @@ const header = (r, name) => (r.stdout.match(new RegExp(`^${name}:\\s*([^\\r\\n]+
 const raw = r => `$ ${r.command}\n${r.stdout}${r.stderr}${r.error ? '\n' + r.error : ''}`;
 const edge = (c, route) => `http://${c.mac2.ip}:${c.mac2.port}${route}`;
 
+const PERSON_METADATA = {
+  evidenceA: { code: 'A', name: 'Person A (Pankaj · Mac 1 · DNS Lead)', ip: '10.7.17.94' },
+  evidenceB: { code: 'B', name: 'Person B (Ashutosh · Mac 2 · Edge & TLS Lead)', ip: '10.7.3.128' },
+  evidenceC: { code: 'C', name: 'Person C (Shreya · Mac 3 · Backend A Lead)', ip: '10.7.6.84' },
+  evidenceD: { code: 'D', name: 'Person D (Ranvendra · Mac 4 · Backend B & Capture)', ip: '10.7.17.147' },
+  final_combined_evidence: { code: 'COMBINED', name: 'Combined Dossier (All 4 Nodes)', ip: '10.7.0.0/19' }
+};
+
 function evidenceFiles() {
   const files = [];
-  function walk(dir, category) {
+  function walk(dir, category, personKey) {
     if (!fs.existsSync(dir)) return;
     for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, item.name);
-      if (item.isDirectory()) walk(full, category);
-      else if (item.isFile() && /\.(txt|log|png|jpe?g|pdf|pcapng?|json)$/i.test(item.name)) {
+      if (item.isDirectory()) {
+        walk(full, category, personKey);
+      } else if (item.isFile() && /\.(txt|log|png|jpe?g|pdf|pcapng?|json|sh)$/i.test(item.name)) {
+        if (item.name === 'README.md' || item.name.startsWith('.')) continue;
         const stat = fs.statSync(full);
-        files.push({ path: path.relative(EVIDENCE, full), category, name: item.name, bytes: stat.size,
-          modifiedAt: stat.mtime.toISOString(), url: '/api/evidence/file?path=' + encodeURIComponent(path.relative(EVIDENCE, full)) });
+        const rel = path.relative(EVIDENCE, full);
+        const pInfo = PERSON_METADATA[personKey] || { code: 'COMBINED', name: 'Combined Dossier (All 4 Nodes)', ip: '10.7.0.0/19' };
+        files.push({
+          path: rel,
+          category,
+          person: pInfo.code,
+          personName: pInfo.name,
+          personIp: pInfo.ip,
+          name: item.name,
+          bytes: stat.size,
+          modifiedAt: stat.mtime.toISOString(),
+          url: '/api/evidence/file?path=' + encodeURIComponent(rel)
+        });
       }
     }
   }
-  categories.forEach(c => walk(path.join(EVIDENCE, c), c));
+
+  ['evidenceA', 'evidenceB', 'evidenceC', 'evidenceD', 'final_combined_evidence'].forEach(pKey => {
+    categories.forEach(c => {
+      walk(path.join(EVIDENCE, pKey, c), c, pKey);
+    });
+  });
+
   return files;
 }
 const json = (res, code, data) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(data)); };

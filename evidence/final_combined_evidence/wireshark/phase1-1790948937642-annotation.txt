@@ -1,0 +1,254 @@
+PACKET CAPTURE — OBSERVED OUTPUT
+Captured: 2026-10-02T13:49:06.628Z
+Interface: en0 (Wi-Fi 10.7.3.128)
+Parsed IPv4 packet lines: 46
+Configured targets (not proof of reachability): 10.7.17.94, 10.7.3.128, 10.7.6.84, 10.7.17.147
+
+This capture contains a DNS probe, a named HTTPS request, and two independent direct-backend probes. Direct probes do not establish which backend Nginx selected. TCP service ports do not prove TLS version, cipher, certificate trust, HTTP contents, or a complete handshake. Inspect the pcap in Wireshark for decoded protocol evidence.
+
+PROBE RESULTS
+$ dig "@10.7.17.94" "app.teamX.test" "A" "+time=2" "+tries=1"
+
+; <<>> DiG 9.10.6 <<>> @10.7.17.94 app.teamX.test A +time=2 +tries=1
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 8043
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;app.teamX.test.			IN	A
+
+;; ANSWER SECTION:
+app.teamX.test.		0	IN	A	10.7.3.128
+
+;; Query time: 14 msec
+;; SERVER: 10.7.17.94#53(10.7.17.94)
+;; WHEN: Fri Oct 02 19:18:58 IST 2026
+;; MSG SIZE  rcvd: 59
+
+
+
+$ curl "--noproxy" "*" "-sS" "-i" "--connect-timeout" "2" "--max-time" "5" "-v" "--cacert" "/Users/ash/CascadeProjects/projects..../CN/personB/tls/ca.crt" "https://app.teamX.test:8443/api/status"
+* Host app.teamX.test:8443 was resolved.
+* IPv6: (none)
+* IPv4: 10.7.3.128
+*   Trying 10.7.3.128:8443...
+* ALPN: curl offers h2,http/1.1
+} [5 bytes data]
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+} [512 bytes data]
+*  CAfile: /Users/ash/CascadeProjects/projects..../CN/personB/tls/ca.crt
+*  CApath: none
+{ [5 bytes data]
+* TLSv1.3 (IN), TLS handshake, Server hello (2):
+{ [122 bytes data]
+* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
+{ [53 bytes data]
+* TLSv1.3 (IN), TLS handshake, Certificate (11):
+{ [1053 bytes data]
+* TLSv1.3 (IN), TLS handshake, CERT verify (15):
+{ [264 bytes data]
+* TLSv1.3 (IN), TLS handshake, Finished (20):
+{ [52 bytes data]
+* TLSv1.3 (OUT), TLS change cipher, Change cipher spec (1):
+} [1 bytes data]
+* TLSv1.3 (OUT), TLS handshake, Finished (20):
+} [52 bytes data]
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384 / X25519 / RSASSA-PSS
+* ALPN: server accepted http/1.1
+* Server certificate:
+*  subject: C=IN; ST=Karnataka; L=Bengaluru; O=TeamX; OU=NetworkLab; CN=app.teamX.test
+*  start date: Sep 28 10:03:07 2026 GMT
+*  expire date: Sep 28 10:03:07 2027 GMT
+*  subjectAltName: host "app.teamX.test" matched cert's "app.teamX.test"
+*  issuer: C=IN; ST=Karnataka; L=Bengaluru; O=TeamX; OU=NetworkLab; CN=TeamX Local CA
+*  SSL certificate verify ok.
+*   Certificate level 0: Public key type RSA (2048/112 Bits/secBits), signed using sha256WithRSAEncryption
+*   Certificate level 1: Public key type RSA (2048/112 Bits/secBits), signed using sha256WithRSAEncryption
+* Connected to app.teamX.test (10.7.3.128) port 8443
+* using HTTP/1.x
+} [5 bytes data]
+> GET /api/status HTTP/1.1
+> Host: app.teamX.test:8443
+> User-Agent: curl/8.12.1
+> Accept: */*
+> 
+* Request completely sent off
+{ [5 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [281 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [281 bytes data]
+* Operation timed out after 5002 milliseconds with 0 bytes received
+* closing connection #0
+curl: (28) Operation timed out after 5002 milliseconds with 0 bytes received
+
+Command failed: curl --noproxy * -sS -i --connect-timeout 2 --max-time 5 -v --cacert /Users/ash/CascadeProjects/projects..../CN/personB/tls/ca.crt https://app.teamX.test:8443/api/status
+* Host app.teamX.test:8443 was resolved.
+* IPv6: (none)
+* IPv4: 10.7.3.128
+*   Trying 10.7.3.128:8443...
+* ALPN: curl offers h2,http/1.1
+} [5 bytes data]
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+} [512 bytes data]
+*  CAfile: /Users/ash/CascadeProjects/projects..../CN/personB/tls/ca.crt
+*  CApath: none
+{ [5 bytes data]
+* TLSv1.3 (IN), TLS handshake, Server hello (2):
+{ [122 bytes data]
+* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
+{ [53 bytes data]
+* TLSv1.3 (IN), TLS handshake, Certificate (11):
+{ [1053 bytes data]
+* TLSv1.3 (IN), TLS handshake, CERT verify (15):
+{ [264 bytes data]
+* TLSv1.3 (IN), TLS handshake, Finished (20):
+{ [52 bytes data]
+* TLSv1.3 (OUT), TLS change cipher, Change cipher spec (1):
+} [1 bytes data]
+* TLSv1.3 (OUT), TLS handshake, Finished (20):
+} [52 bytes data]
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384 / X25519 / RSASSA-PSS
+* ALPN: server accepted http/1.1
+* Server certificate:
+*  subject: C=IN; ST=Karnataka; L=Bengaluru; O=TeamX; OU=NetworkLab; CN=app.teamX.test
+*  start date: Sep 28 10:03:07 2026 GMT
+*  expire date: Sep 28 10:03:07 2027 GMT
+*  subjectAltName: host "app.teamX.test" matched cert's "app.teamX.test"
+*  issuer: C=IN; ST=Karnataka; L=Bengaluru; O=TeamX; OU=NetworkLab; CN=TeamX Local CA
+*  SSL certificate verify ok.
+*   Certificate level 0: Public key type RSA (2048/112 Bits/secBits), signed using sha256WithRSAEncryption
+*   Certificate level 1: Public key type RSA (2048/112 Bits/secBits), signed using sha256WithRSAEncryption
+* Connected to app.teamX.test (10.7.3.128) port 8443
+* using HTTP/1.x
+} [5 bytes data]
+> GET /api/status HTTP/1.1
+> Host: app.teamX.test:8443
+> User-Agent: curl/8.12.1
+> Accept: */*
+> 
+* Request completely sent off
+{ [5 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [281 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [281 bytes data]
+* Operation timed out after 5002 milliseconds with 0 bytes received
+* closing connection #0
+curl: (28) Operation timed out after 5002 milliseconds with 0 bytes received
+
+
+$ curl "--noproxy" "*" "-sS" "-i" "--connect-timeout" "2" "--max-time" "5" "http://10.7.6.84:3001/api/status"
+curl: (7) Failed to connect to 10.7.6.84 port 3001 after 1034 ms: Could not connect to server
+
+Command failed: curl --noproxy * -sS -i --connect-timeout 2 --max-time 5 http://10.7.6.84:3001/api/status
+curl: (7) Failed to connect to 10.7.6.84 port 3001 after 1034 ms: Could not connect to server
+
+
+$ curl "--noproxy" "*" "-sS" "-i" "--connect-timeout" "2" "--max-time" "5" "http://10.7.17.147:3002/api/status"
+curl: (28) Connection timed out after 2002 milliseconds
+
+Command failed: curl --noproxy * -sS -i --connect-timeout 2 --max-time 5 http://10.7.17.147:3002/api/status
+curl: (28) Connection timed out after 2002 milliseconds
+
+
+PACKET SUMMARY
+1 | 19:18:58.397580 | 10.7.3.128:59254 > 10.7.17.94:53 | DNS | 8043+ [1au] A? app.teamX.test. (43)
+2 | 19:18:58.411211 | 10.7.17.94:53 > 10.7.3.128:59254 | DNS | 8043* 1/0/1 A 10.7.3.128 (59)
+3 | 19:18:58.446159 | 10.7.3.128:62841 > 10.7.17.94:53 | DNS | 40188+ A? app.teamX.test. (32)
+4 | 19:18:58.462226 | 10.7.17.94:53 > 10.7.3.128:62841 | DNS | 40188* 1/0/0 A 10.7.3.128 (48)
+5 | 19:18:58.463558 | 10.7.3.128:61722 > 10.7.3.128:8443 | TCP | Flags [S], seq 1815726274, win 65535, options [mss 16344,nop,wscale 6,nop,nop,TS val 1123951457 ecr 0,sackOK,eol], length 0
+6 | 19:18:58.463860 | 10.7.3.128:8443 > 10.7.3.128:61722 | TCP | Flags [S.], seq 2008304368, ack 1815726275, win 65535, options [mss 16344,nop,wscale 6,nop,nop,TS val 221258648 ecr 1123951457,sackOK,eol], length 0
+7 | 19:18:58.463896 | 10.7.3.128:61722 > 10.7.3.128:8443 | TCP | Flags [.], ack 1, win 6380, options [nop,nop,TS val 1123951457 ecr 221258648], length 0
+8 | 19:18:58.463915 | 10.7.3.128:8443 > 10.7.3.128:61722 | TCP | Flags [.], ack 1, win 6380, options [nop,nop,TS val 221258648 ecr 1123951457], length 0
+9 | 19:18:58.473897 | 10.7.3.128:61722 > 10.7.3.128:8443 | TCP | Flags [P.], seq 1:518, ack 1, win 6380, options [nop,nop,TS val 1123951467 ecr 221258648], length 517
+10 | 19:18:58.474043 | 10.7.3.128:8443 > 10.7.3.128:61722 | TCP | Flags [.], ack 518, win 6372, options [nop,nop,TS val 221258658 ecr 1123951467], length 0
+11 | 19:18:58.513763 | 10.7.3.128:8443 > 10.7.3.128:61722 | TCP | Flags [P.], seq 1:1644, ack 518, win 6372, options [nop,nop,TS val 221258698 ecr 1123951467], length 1643
+12 | 19:18:58.513864 | 10.7.3.128:61722 > 10.7.3.128:8443 | TCP | Flags [.], ack 1644, win 6355, options [nop,nop,TS val 1123951507 ecr 221258698], length 0
+13 | 19:18:58.516098 | 10.7.3.128:61722 > 10.7.3.128:8443 | TCP | Flags [P.], seq 518:598, ack 1644, win 6355, options [nop,nop,TS val 1123951509 ecr 221258698], length 80
+14 | 19:18:58.516173 | 10.7.3.128:61722 > 10.7.3.128:8443 | TCP | Flags [P.], seq 598:713, ack 1644, win 6355, options [nop,nop,TS val 1123951509 ecr 221258698], length 115
+15 | 19:18:58.516376 | 10.7.3.128:8443 > 10.7.3.128:61722 | TCP | Flags [.], ack 598, win 6371, options [nop,nop,TS val 221258700 ecr 1123951509], length 0
+16 | 19:18:58.516428 | 10.7.3.128:8443 > 10.7.3.128:61722 | TCP | Flags [.], ack 713, win 6370, options [nop,nop,TS val 221258701 ecr 1123951509], length 0
+17 | 19:18:58.516717 | 10.7.3.128:8443 > 10.7.3.128:61722 | TCP | Flags [P.], seq 1644:1947, ack 713, win 6370, options [nop,nop,TS val 221258701 ecr 1123951509], length 303
+18 | 19:18:58.516739 | 10.7.3.128:8443 > 10.7.3.128:61722 | TCP | Flags [P.], seq 1947:2250, ack 713, win 6370, options [nop,nop,TS val 221258701 ecr 1123951509], length 303
+19 | 19:18:58.516754 | 10.7.3.128:61722 > 10.7.3.128:8443 | TCP | Flags [.], ack 1947, win 6351, options [nop,nop,TS val 1123951510 ecr 221258701], length 0
+20 | 19:18:58.516768 | 10.7.3.128:61722 > 10.7.3.128:8443 | TCP | Flags [.], ack 2250, win 6347, options [nop,nop,TS val 1123951510 ecr 221258701], length 0
+21 | 19:18:58.517031 | 10.7.3.128:61723 > 10.7.6.84:3001 | TCP | Flags [SEW], seq 1590432451, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 495256714 ecr 0,sackOK,eol], length 0
+22 | 19:18:58.732835 | 10.7.6.84:3001 > 10.7.3.128:61723 | TCP | Flags [R.], seq 0, ack 1590432452, win 0, length 0
+23 | 19:18:59.411516 | 10.7.3.128:33790 > 10.7.17.94:53 | DNS | 51188+ Type65? browser.events.data.microsoft.com. (51)
+24 | 19:18:59.411745 | 10.7.3.128:18141 > 10.7.17.94:53 | DNS | 62801+ A? browser.events.data.microsoft.com. (51)
+25 | 19:18:59.441158 | 10.7.17.94:53 > 10.7.3.128:33790 | DNS | 51188 2/1/0 CNAME browser.events.data.trafficmanager.net., CNAME onedscolprdwus53.westus.cloudapp.azure.com. (216)
+26 | 19:18:59.441161 | 10.7.17.94:53 > 10.7.3.128:18141 | DNS | 62801 3/0/0 CNAME browser.events.data.trafficmanager.net., CNAME onedscolprdwus70.westus.cloudapp.azure.com., A 20.184.175.12 (172)
+27 | 19:18:59.517056 | 10.7.3.128:61723 > 10.7.6.84:3001 | TCP | Flags [S], seq 1590432451, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 495257714 ecr 0,sackOK,eol], length 0
+28 | 19:18:59.606886 | 10.7.6.84:3001 > 10.7.3.128:61723 | TCP | Flags [R.], seq 0, ack 1, win 0, length 0
+29 | 19:18:59.609205 | 10.7.3.128:61725 > 10.7.17.147:3002 | TCP | Flags [SEW], seq 2787798280, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 1010785162 ecr 0,sackOK,eol], length 0
+30 | 19:19:00.609536 | 10.7.3.128:61725 > 10.7.17.147:3002 | TCP | Flags [S], seq 2787798280, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 1010786163 ecr 0,sackOK,eol], length 0
+31 | 19:19:01.611352 | 10.7.3.128:61725 > 10.7.17.147:3002 | TCP | Flags [S], seq 2787798280, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 1010787165 ecr 0,sackOK,eol], length 0
+32 | 19:19:02.612119 | 10.7.3.128:61725 > 10.7.17.147:3002 | TCP | Flags [S], seq 2787798280, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 1010788165 ecr 0,sackOK,eol], length 0
+33 | 19:19:03.443896 | 10.7.3.128:61722 > 10.7.3.128:8443 | TCP | Flags [F.], seq 713, ack 2250, win 6347, options [nop,nop,TS val 1123956437 ecr 221258701], length 0
+34 | 19:19:03.444063 | 10.7.3.128:8443 > 10.7.3.128:61722 | TCP | Flags [.], ack 714, win 6370, options [nop,nop,TS val 221263628 ecr 1123956437], length 0
+35 | 19:19:03.449413 | 10.7.3.128:8443 > 10.7.3.128:61722 | TCP | Flags [F.], seq 2250, ack 714, win 6370, options [nop,nop,TS val 221263634 ecr 1123956437], length 0
+36 | 19:19:03.449676 | 10.7.3.128:61722 > 10.7.3.128:8443 | TCP | Flags [.], ack 2251, win 6347, options [nop,nop,TS val 1123956443 ecr 221263634], length 0
+37 | 19:19:03.486159 | 10.7.3.128:61727 > 10.7.6.84:3001 | TCP | Flags [SEW], seq 2394020459, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 4127805177 ecr 0,sackOK,eol], length 0
+38 | 19:19:03.493311 | 10.7.6.84:3001 > 10.7.3.128:61727 | TCP | Flags [R.], seq 0, ack 2394020460, win 0, length 0
+39 | 19:19:04.486354 | 10.7.3.128:61727 > 10.7.6.84:3001 | TCP | Flags [S], seq 2394020459, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 4127806178 ecr 0,sackOK,eol], length 0
+40 | 19:19:04.505054 | 10.7.6.84:3001 > 10.7.3.128:61727 | TCP | Flags [R.], seq 0, ack 1, win 0, length 0
+41 | 19:19:04.549173 | 10.7.3.128:61728 > 10.7.17.147:3002 | TCP | Flags [SEW], seq 48587686, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 2318312261 ecr 0,sackOK,eol], length 0
+42 | 19:19:04.652634 | 10.7.3.128:56540 > 10.7.17.94:53 | DNS | 62807+ A? daily-cloudcode-pa.googleapis.com. (51)
+43 | 19:19:04.652930 | 10.7.3.128:54255 > 10.7.17.94:53 | DNS | 40572+ AAAA? daily-cloudcode-pa.googleapis.com. (51)
+44 | 19:19:04.673172 | 10.7.17.94:53 > 10.7.3.128:56540 | DNS | 62807 8/0/0 A 172.217.119.4, A 172.217.116.4, A 172.217.114.4, A 172.217.113.4, A 172.217.117.4, A 172.217.115.4, A 172.217.118.4, A 172.217.112.4 (179)
+45 | 19:19:04.674634 | 10.7.17.94:53 > 10.7.3.128:54255 | DNS | 40572 8/0/0 AAAA 2001:4860:4847:400::, AAAA 2001:4860:4846:400::, AAAA 2001:4860:4845:400::, AAAA 2001:4860:4841:400::, AAAA 2001:4860:4843:400::, AAAA 2001:4860:4842:400::, AAAA 2001:4860:4844:400::, AAAA 2001:4860:4840:400:: (275)
+46 | 19:19:05.549335 | 10.7.3.128:61728 > 10.7.17.147:3002 | TCP | Flags [S], seq 48587686, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 2318313261 ecr 0,sackOK,eol], length 0
+
+RAW TCPDUMP OUTPUT
+2026-10-02 19:18:58.397580 IP 10.7.3.128.59254 > 10.7.17.94.53: 8043+ [1au] A? app.teamX.test. (43)
+2026-10-02 19:18:58.411211 IP 10.7.17.94.53 > 10.7.3.128.59254: 8043* 1/0/1 A 10.7.3.128 (59)
+2026-10-02 19:18:58.446159 IP 10.7.3.128.62841 > 10.7.17.94.53: 40188+ A? app.teamX.test. (32)
+2026-10-02 19:18:58.462226 IP 10.7.17.94.53 > 10.7.3.128.62841: 40188* 1/0/0 A 10.7.3.128 (48)
+2026-10-02 19:18:58.463558 IP 10.7.3.128.61722 > 10.7.3.128.8443: Flags [S], seq 1815726274, win 65535, options [mss 16344,nop,wscale 6,nop,nop,TS val 1123951457 ecr 0,sackOK,eol], length 0
+2026-10-02 19:18:58.463860 IP 10.7.3.128.8443 > 10.7.3.128.61722: Flags [S.], seq 2008304368, ack 1815726275, win 65535, options [mss 16344,nop,wscale 6,nop,nop,TS val 221258648 ecr 1123951457,sackOK,eol], length 0
+2026-10-02 19:18:58.463896 IP 10.7.3.128.61722 > 10.7.3.128.8443: Flags [.], ack 1, win 6380, options [nop,nop,TS val 1123951457 ecr 221258648], length 0
+2026-10-02 19:18:58.463915 IP 10.7.3.128.8443 > 10.7.3.128.61722: Flags [.], ack 1, win 6380, options [nop,nop,TS val 221258648 ecr 1123951457], length 0
+2026-10-02 19:18:58.473897 IP 10.7.3.128.61722 > 10.7.3.128.8443: Flags [P.], seq 1:518, ack 1, win 6380, options [nop,nop,TS val 1123951467 ecr 221258648], length 517
+2026-10-02 19:18:58.474043 IP 10.7.3.128.8443 > 10.7.3.128.61722: Flags [.], ack 518, win 6372, options [nop,nop,TS val 221258658 ecr 1123951467], length 0
+2026-10-02 19:18:58.513763 IP 10.7.3.128.8443 > 10.7.3.128.61722: Flags [P.], seq 1:1644, ack 518, win 6372, options [nop,nop,TS val 221258698 ecr 1123951467], length 1643
+2026-10-02 19:18:58.513864 IP 10.7.3.128.61722 > 10.7.3.128.8443: Flags [.], ack 1644, win 6355, options [nop,nop,TS val 1123951507 ecr 221258698], length 0
+2026-10-02 19:18:58.516098 IP 10.7.3.128.61722 > 10.7.3.128.8443: Flags [P.], seq 518:598, ack 1644, win 6355, options [nop,nop,TS val 1123951509 ecr 221258698], length 80
+2026-10-02 19:18:58.516173 IP 10.7.3.128.61722 > 10.7.3.128.8443: Flags [P.], seq 598:713, ack 1644, win 6355, options [nop,nop,TS val 1123951509 ecr 221258698], length 115
+2026-10-02 19:18:58.516376 IP 10.7.3.128.8443 > 10.7.3.128.61722: Flags [.], ack 598, win 6371, options [nop,nop,TS val 221258700 ecr 1123951509], length 0
+2026-10-02 19:18:58.516428 IP 10.7.3.128.8443 > 10.7.3.128.61722: Flags [.], ack 713, win 6370, options [nop,nop,TS val 221258701 ecr 1123951509], length 0
+2026-10-02 19:18:58.516717 IP 10.7.3.128.8443 > 10.7.3.128.61722: Flags [P.], seq 1644:1947, ack 713, win 6370, options [nop,nop,TS val 221258701 ecr 1123951509], length 303
+2026-10-02 19:18:58.516739 IP 10.7.3.128.8443 > 10.7.3.128.61722: Flags [P.], seq 1947:2250, ack 713, win 6370, options [nop,nop,TS val 221258701 ecr 1123951509], length 303
+2026-10-02 19:18:58.516754 IP 10.7.3.128.61722 > 10.7.3.128.8443: Flags [.], ack 1947, win 6351, options [nop,nop,TS val 1123951510 ecr 221258701], length 0
+2026-10-02 19:18:58.516768 IP 10.7.3.128.61722 > 10.7.3.128.8443: Flags [.], ack 2250, win 6347, options [nop,nop,TS val 1123951510 ecr 221258701], length 0
+2026-10-02 19:18:58.517031 IP 10.7.3.128.61723 > 10.7.6.84.3001: Flags [SEW], seq 1590432451, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 495256714 ecr 0,sackOK,eol], length 0
+2026-10-02 19:18:58.732835 IP 10.7.6.84.3001 > 10.7.3.128.61723: Flags [R.], seq 0, ack 1590432452, win 0, length 0
+2026-10-02 19:18:59.411516 IP 10.7.3.128.33790 > 10.7.17.94.53: 51188+ Type65? browser.events.data.microsoft.com. (51)
+2026-10-02 19:18:59.411745 IP 10.7.3.128.18141 > 10.7.17.94.53: 62801+ A? browser.events.data.microsoft.com. (51)
+2026-10-02 19:18:59.441158 IP 10.7.17.94.53 > 10.7.3.128.33790: 51188 2/1/0 CNAME browser.events.data.trafficmanager.net., CNAME onedscolprdwus53.westus.cloudapp.azure.com. (216)
+2026-10-02 19:18:59.441161 IP 10.7.17.94.53 > 10.7.3.128.18141: 62801 3/0/0 CNAME browser.events.data.trafficmanager.net., CNAME onedscolprdwus70.westus.cloudapp.azure.com., A 20.184.175.12 (172)
+2026-10-02 19:18:59.517056 IP 10.7.3.128.61723 > 10.7.6.84.3001: Flags [S], seq 1590432451, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 495257714 ecr 0,sackOK,eol], length 0
+2026-10-02 19:18:59.606886 IP 10.7.6.84.3001 > 10.7.3.128.61723: Flags [R.], seq 0, ack 1, win 0, length 0
+2026-10-02 19:18:59.609205 IP 10.7.3.128.61725 > 10.7.17.147.3002: Flags [SEW], seq 2787798280, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 1010785162 ecr 0,sackOK,eol], length 0
+2026-10-02 19:19:00.609536 IP 10.7.3.128.61725 > 10.7.17.147.3002: Flags [S], seq 2787798280, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 1010786163 ecr 0,sackOK,eol], length 0
+2026-10-02 19:19:01.611352 IP 10.7.3.128.61725 > 10.7.17.147.3002: Flags [S], seq 2787798280, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 1010787165 ecr 0,sackOK,eol], length 0
+2026-10-02 19:19:02.612119 IP 10.7.3.128.61725 > 10.7.17.147.3002: Flags [S], seq 2787798280, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 1010788165 ecr 0,sackOK,eol], length 0
+2026-10-02 19:19:03.443896 IP 10.7.3.128.61722 > 10.7.3.128.8443: Flags [F.], seq 713, ack 2250, win 6347, options [nop,nop,TS val 1123956437 ecr 221258701], length 0
+2026-10-02 19:19:03.444063 IP 10.7.3.128.8443 > 10.7.3.128.61722: Flags [.], ack 714, win 6370, options [nop,nop,TS val 221263628 ecr 1123956437], length 0
+2026-10-02 19:19:03.449413 IP 10.7.3.128.8443 > 10.7.3.128.61722: Flags [F.], seq 2250, ack 714, win 6370, options [nop,nop,TS val 221263634 ecr 1123956437], length 0
+2026-10-02 19:19:03.449676 IP 10.7.3.128.61722 > 10.7.3.128.8443: Flags [.], ack 2251, win 6347, options [nop,nop,TS val 1123956443 ecr 221263634], length 0
+2026-10-02 19:19:03.486159 IP 10.7.3.128.61727 > 10.7.6.84.3001: Flags [SEW], seq 2394020459, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 4127805177 ecr 0,sackOK,eol], length 0
+2026-10-02 19:19:03.493311 IP 10.7.6.84.3001 > 10.7.3.128.61727: Flags [R.], seq 0, ack 2394020460, win 0, length 0
+2026-10-02 19:19:04.486354 IP 10.7.3.128.61727 > 10.7.6.84.3001: Flags [S], seq 2394020459, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 4127806178 ecr 0,sackOK,eol], length 0
+2026-10-02 19:19:04.505054 IP 10.7.6.84.3001 > 10.7.3.128.61727: Flags [R.], seq 0, ack 1, win 0, length 0
+2026-10-02 19:19:04.549173 IP 10.7.3.128.61728 > 10.7.17.147.3002: Flags [SEW], seq 48587686, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 2318312261 ecr 0,sackOK,eol], length 0
+2026-10-02 19:19:04.652634 IP 10.7.3.128.56540 > 10.7.17.94.53: 62807+ A? daily-cloudcode-pa.googleapis.com. (51)
+2026-10-02 19:19:04.652930 IP 10.7.3.128.54255 > 10.7.17.94.53: 40572+ AAAA? daily-cloudcode-pa.googleapis.com. (51)
+2026-10-02 19:19:04.673172 IP 10.7.17.94.53 > 10.7.3.128.56540: 62807 8/0/0 A 172.217.119.4, A 172.217.116.4, A 172.217.114.4, A 172.217.113.4, A 172.217.117.4, A 172.217.115.4, A 172.217.118.4, A 172.217.112.4 (179)
+2026-10-02 19:19:04.674634 IP 10.7.17.94.53 > 10.7.3.128.54255: 40572 8/0/0 AAAA 2001:4860:4847:400::, AAAA 2001:4860:4846:400::, AAAA 2001:4860:4845:400::, AAAA 2001:4860:4841:400::, AAAA 2001:4860:4843:400::, AAAA 2001:4860:4842:400::, AAAA 2001:4860:4844:400::, AAAA 2001:4860:4840:400:: (275)
+2026-10-02 19:19:05.549335 IP 10.7.3.128.61728 > 10.7.17.147.3002: Flags [S], seq 48587686, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 2318313261 ecr 0,sackOK,eol], length 0
+
