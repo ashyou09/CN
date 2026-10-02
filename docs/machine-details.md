@@ -4,15 +4,15 @@
 
 Fill in this table when all 4 Macs are connected to the team LAN / Wi-Fi segment:
 
-| Parameter | Mac 1 (Person A) | Mac 2 (Person B) | Mac 3 (Person C) | Mac 4 (Person D) |
+| Parameter | Mac 1 (Person A) | Mac 2 (Person B) | Mac 3 (Person C) | Mac 4 (Person D - You) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Role** | Private DNS + Client | Edge Proxy / LB / TLS | Backend Server A | Backend Server B + Client |
 | **Hostname** | `mac1.local` | `mac2.local` | `mac3.local` | `mac4.local` |
-| **Interface** | e.g. `en0` | e.g. `en0` | e.g. `en0` | e.g. `en0` |
-| **IPv4 Address** | | | | |
-| **Subnet Mask** | e.g. `255.255.255.0` (`/24`) | | | |
-| **Default Gateway**| e.g. `10.7.0.1` | | | |
-| **MAC Address** | | | | |
+| **Interface** | `en0` | `en0` | `en0` | `en0` |
+| **IPv4 Address** | `10.7.17.94` | `10.7.3.128` | `10.7.6.84` | `10.7.17.147` |
+| **Subnet Mask** | `255.255.255.0` (`/24`) | `255.255.255.0` (`/24`) | `255.255.255.0` (`/24`) | `255.255.255.0` (`/24`) |
+| **Default Gateway**| `10.124.23.114` | `10.124.23.114` | `10.124.23.114` | `10.124.23.114` |
+| **MAC Address** | `ea:7f:5f:22:d7:11` | `fe:ce:ae:d9:87:58` | `a6:68:f6:cc:1c:db` | `32:9b:fc:5e:3b:91` |
 | **Open Service Port**| `53` (UDP/TCP) | `8080`, `8443` | `3001` | `3002` |
 
 ---
@@ -49,7 +49,7 @@ All machines must verify reachability before starting higher layer services:
 | **Mac 1** | — | [ ] PASS | [ ] PASS | [ ] PASS |
 | **Mac 2** | [ ] PASS | — | [ ] PASS | [ ] PASS |
 | **Mac 3** | [ ] PASS | [ ] PASS | — | [ ] PASS |
-| **Mac 4** | [ ] PASS | [ ] PASS | [ ] PASS | — |
+| **Mac 4** | [x] PASS | [x] PASS | [x] PASS | — |
 
 *Verification command:*
 ```bash
