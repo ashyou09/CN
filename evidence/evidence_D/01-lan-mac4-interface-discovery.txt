@@ -1,0 +1,43 @@
+=== Mac 4 (Person D) Network Discovery Evidence (Task A, Stage 1) ===
+Timestamp: Fri Oct 02 18:22:02 IST 2026
+Hostname: mac4.local
+Role: Backend Server B + Test Client
+
+1. Default Route & Gateway:
+$ route -n get default
+   route to: default
+destination: default
+       mask: default
+    gateway: 10.7.0.1
+  interface: en0
+      flags: <UP,GATEWAY,DONE,STATIC,PRCLONING,GLOBAL>
+ recvpipe  sendpipe  ssthresh  rtt,msec    rttvar  hopcount      mtu     expire
+       0         0         0         0         0         0      1500         0 
+
+2. IPv4 Address:
+$ ipconfig getifaddr en0
+10.7.17.147
+
+3. Subnet Mask:
+$ ipconfig getoption en0 subnet_mask
+255.255.224.0
+
+4. Interface en0 Details (MAC Address & Hardware Status):
+$ ifconfig en0
+en0: flags=8963<UP,BROADCAST,SMART,RUNNING,PROMISC,SIMPLEX,MULTICAST> mtu 1500
+	options=6460<TSO4,TSO6,CHANNEL_IO,PARTIAL_CSUM,ZEROINVERT_CSUM>
+	ether 72:1f:ac:57:17:62
+	inet6 fe80::93:d792:6cf5:d54c%en0 prefixlen 64 secured scopeid 0xb 
+	inet 10.7.17.147 netmask 0xffffe000 broadcast 10.7.31.255
+	nd6 options=201<PERFORMNUD,DAD>
+	media: autoselect
+	status: active
+
+=== Summary of Machine Parameters for docs/machine-details.md ===
+- Hostname: mac4.local
+- Interface: en0
+- IPv4 Address: 10.7.17.147
+- Subnet Mask: 255.255.224.0 (/19)
+- Default Gateway: 10.7.0.1
+- Hardware MAC Address: 72:1f:ac:57:17:62
+- Open Service Port: 3002 (TCP)
