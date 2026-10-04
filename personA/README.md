@@ -1,4 +1,5 @@
 # Person A — Mac 1 (Private DNS Server + Test Client)
+**Team Member:** Pankaj Baid
 
 Runs the private DNS resolver (`dnsmasq`) representing a managed DNS service (such as AWS Route 53) for the Private Network Service Platform.
 

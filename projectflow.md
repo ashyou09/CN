@@ -4,12 +4,12 @@ This is the execution runbook for **Phase 1 only**. Follow the numbered stages i
 
 ## 0. Assign machines and prepare the shared values (everyone)
 
-| Person | Mac | Primary job | Runs | Keeps evidence for |
-| --- | --- | --- | --- | --- |
-| A | Mac 1 | DNS lead and client | `dnsmasq`, `dig`, `curl` | LAN, DNS, first client checks |
-| B | Mac 2 | Edge and TLS lead | `nginx`, certificates | nginx, TLS, proxy logs |
-| C | Mac 3 | Backend A lead | Node app on `3001` | backend A and reachability |
-| D | Mac 4 | Backend B and capture lead | Node app on `3002`, `curl`, Wireshark/tcpdump | client flow, caching, balancing, packets |
+| Person | Member | Mac | Primary job | Runs | Keeps evidence for |
+| --- | --- | --- | --- | --- | --- |
+| **A** | **Pankaj Baid** | Mac 1 | DNS lead and client | `dnsmasq`, `dig`, `curl` | LAN, DNS, first client checks |
+| **B** | **Ashutosh Singh** | Mac 2 | Edge and TLS lead | `nginx`, certificates | nginx, TLS, proxy logs |
+| **C** | **Shreya Suman** | Mac 3 | Backend A lead | Node app on `3001` | backend A and reachability |
+| **D** | **Ranvendra Pratap Singh** | Mac 4 | Backend B and capture lead | Node app on `3002`, `curl`, Wireshark/tcpdump | client flow, caching, balancing, packets |
 
 Each person needs a copy of `CN` on their own Mac. Commands below assume the terminal is at the repository root (`cd /path/to/CN`). Keep services running in their own terminal tabs. Install Homebrew, Node.js, nginx, dnsmasq, and Wireshark only on machines that need them. Check before installing:
 

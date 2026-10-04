@@ -13,7 +13,7 @@
 +------v-------+                 +------v-------+                 +------v-------+
 |    Mac 1     |                 |    Mac 2     |                 |    Mac 3     |
 | Person A     |                 | Person B     |                 | Person C     |
-| (Pankaj)     |                 | (Ashutosh)   |                 | (Shreya)     |
+| Pankaj Baid  |                 |Ashutosh Singh|                 | Shreya Suman |
 |  Private DNS |                 | Edge Reverse |                 |  Backend A   |
 |   (Port 53)  |                 | Proxy / TLS  |                 | (Port 3001)  |
 |   Client     |                 |  Load Bal.   |                 +--------------+
@@ -25,7 +25,7 @@
                                  +------v-------+
                                  |    Mac 4     |
                                  | Person D     |
-                                 | (Ranvendra)  |
+                                 |Ranvendra P. S|
                                  |  Backend B   |
                                  | (Port 3002)  |
                                  |   Client     |
@@ -34,12 +34,12 @@
 
 Current team addresses on Rishihood Learner Wi-Fi (2026-10-02):
 
-| Machine | Role | IPv4 address |
+| Machine | Role & Member | IPv4 address |
 | :--- | :--- | :--- |
-| Mac 1 / A | Private DNS and client | `10.7.17.94` |
-| Mac 2 / B | Edge proxy | `10.7.3.128` |
-| Mac 3 / C | Backend A | `10.7.6.84` |
-| Mac 4 / D | Backend B and client | `10.7.17.147` |
+| Mac 1 / A | Private DNS and client · **Pankaj Baid** | `10.7.17.94` |
+| Mac 2 / B | Edge proxy / TLS / LB · **Ashutosh Singh** | `10.7.3.128` |
+| Mac 3 / C | Backend A · **Shreya Suman** | `10.7.6.84` |
+| Mac 4 / D | Backend B and client · **Ranvendra Pratap Singh** | `10.7.17.147` |
 
 ---
 

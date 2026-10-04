@@ -13,10 +13,10 @@ The system is deployed on four physical macOS laptops connected to a single priv
 
 | Persona | Machine | IP Address | MAC Address | Operating System / Hardware | Primary Network Roles | Open Service Ports |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Person A (Pankaj)** | Mac 1 | `10.7.17.94` | `46:1d:da:58:a4:fb` | macOS (Pankaj's MacBook Pro) | Private DNS Server & Test Client | `53` (UDP/TCP) |
-| **Person B (Ashutosh)** | Mac 2 | `10.7.3.128` | `f6:bf:22:4f:e6:62` | macOS (Ashutosh's MacBook Pro · Edge Host) | Edge Proxy, TLS Termination, Load Balancer | `8080` (HTTP), `8443` (HTTPS) |
-| **Person C (Shreya)** | Mac 3 | `10.7.6.84` | `5e:7f:95:17:c2:ab` | macOS (Shreya's MacBook Air) | Backend Microservice Server A | `3001` (HTTP) |
-| **Person D (Ranvendra)** | Mac 4 | `10.7.17.147` | `72:1f:ac:57:17:62` | macOS (Ranvendra's MacBook Air) | Backend Server B, Wireshark Lead, Client | `3002` (HTTP) |
+| **Person A (Pankaj Baid)** | Mac 1 | `10.7.17.94` | `46:1d:da:58:a4:fb` | macOS (Pankaj's MacBook Pro) | Private DNS Server & Test Client | `53` (UDP/TCP) |
+| **Person B (Ashutosh Singh)** | Mac 2 | `10.7.3.128` | `f6:bf:22:4f:e6:62` | macOS (Ashutosh's MacBook Pro · Edge Host) | Edge Proxy, TLS Termination, Load Balancer | `8080` (HTTP), `8443` (HTTPS) |
+| **Person C (Shreya Suman)** | Mac 3 | `10.7.6.84` | `5e:7f:95:17:c2:ab` | macOS (Shreya's MacBook Air) | Backend Microservice Server A | `3001` (HTTP) |
+| **Person D (Ranvendra Pratap Singh)** | Mac 4 | `10.7.17.147` | `72:1f:ac:57:17:62` | macOS (Ranvendra's MacBook Air) | Backend Server B, Wireshark Lead, Client | `3002` (HTTP) |
 
 ---
 

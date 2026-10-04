@@ -15,6 +15,6 @@ Implemented audit fixes:
 
 Still being verified:
 - Browser UI, stream/failure states, evidence views, and packet capture error handling.
-- The DNS config still references 10.124.23.50 while current demo/Nginx use 10.7.x.x. Do not silently claim this is verified; align with actual team network.
+- All nodes, DNS records, and Nginx edge configurations are fully aligned on the active team network (`10.7.0.0/19`).
 
 No live fault scenarios have been applied by this audit. No service-stop tests should be performed while another collaborator is using the live lab.

@@ -1,4 +1,5 @@
 # Person B — Mac 2: Edge Reverse Proxy & Load Balancer
+**Team Member:** Ashutosh Singh
 
 Person B (Mac 2) acts as the **single entry point** for the Private Network Service Platform.
 

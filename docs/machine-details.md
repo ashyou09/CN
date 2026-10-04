@@ -4,7 +4,7 @@
 
 Fill in this table when all 4 Macs are connected to the team LAN / Wi-Fi segment:
 
-| Parameter | Mac 1 (Person A · Pankaj) | Mac 2 (Person B · Ashutosh) | Mac 3 (Person C · Shreya) | Mac 4 (Person D · Ranvendra) |
+| Parameter | Mac 1 (Person A · Pankaj Baid) | Mac 2 (Person B · Ashutosh Singh) | Mac 3 (Person C · Shreya Suman) | Mac 4 (Person D · Ranvendra Pratap Singh) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Role** | Private DNS + Client | Edge Proxy / LB / TLS | Backend Server A | Backend Server B + Client |
 | **Hostname** | `Pankajs-MacBook-Pro-2.local` | `mac2.local` | `mac3.local` | `Ranvendras-MacBook-Air.local` |
