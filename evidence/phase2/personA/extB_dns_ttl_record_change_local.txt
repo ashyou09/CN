@@ -1,0 +1,6 @@
+# Extension B — DNS TTL (30s) & Record Change Verification (Sun Nov 22 18:52:35 IST 2026)
+## Before change (Backup DNS :15354 -> 127.0.0.1, TTL 30s)
+app.teamX.test.		30	IN	A	127.0.0.1
+
+## After controlled record change (:15355 -> 127.0.0.2, TTL 30s)
+app.teamX.test.		30	IN	A	127.0.0.2

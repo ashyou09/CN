@@ -1,0 +1,13 @@
+# Extension A — Backup DNS Local Verification (Sun Nov 22 18:52:33 IST 2026)
+## Step 1: Primary DNS (127.0.0.1:15353) active
+app.teamX.test.		30	IN	A	127.0.0.1
+
+## Step 2: Primary DNS stopped (15353 should fail)
+
+; <<>> DiG 9.10.6 <<>> @127.0.0.1 -p 15353 +time=1 +tries=1 app.teamX.test
+; (1 server found)
+;; global options: +cmd
+;; connection timed out; no servers could be reached
+
+## Step 3: Backup DNS (127.0.0.1:15354) continues serving
+app.teamX.test.		30	IN	A	127.0.0.1
