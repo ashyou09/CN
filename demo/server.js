@@ -656,20 +656,23 @@ const server = http.createServer(async (req, res) => {
       if (ext === 'C') {
         const pfA = fs.existsSync(path.join(ROOT, 'phase2/personC/firewall/backend_a_isolation.pf')) ? fs.readFileSync(path.join(ROOT, 'phase2/personC/firewall/backend_a_isolation.pf'), 'utf8') : '';
         const pfB = fs.existsSync(path.join(ROOT, 'phase2/personD/firewall/backend_b_isolation.pf')) ? fs.readFileSync(path.join(ROOT, 'phase2/personD/firewall/backend_b_isolation.pf'), 'utf8') : '';
-        const directProbe = !t.isLocal ? await curl([t.backendAUrl]) : null;
+        const directProbeA = !t.isLocal ? await curl([t.backendAUrl]) : null;
+        const directProbeB = !t.isLocal ? await curl([t.backendBUrl]) : null;
         const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
         const rulesValid = pfA.includes('block in quick proto tcp from any to any port 3001') && pfB.includes('block in quick proto tcp from any to any port 3002');
-        const directBlocked = directProbe ? !directProbe.success : false;
+        const blockedA = directProbeA ? !directProbeA.success : false;
+        const blockedB = directProbeB ? !directProbeB.success : false;
+        const directBlocked = blockedA && blockedB;
         const pass = rulesValid && edgeRes.success && status(edgeRes) === 200 && (t.isLocal || directBlocked);
         return json(res, 200, {
           ext, pass,
           summary: pass
-            ? (t.isLocal ? 'pf rulesets verified; Edge proxy reaches backends' : `Direct ${t.backendAUrl} blocked by pf while Edge ${t.priEdgeIp}:${t.priEdgePort} passes`)
-            : (!t.isLocal && !directBlocked ? `Direct ${t.backendAUrl} is still open — load pfctl on Mac 3!` : 'Firewall rule or edge reachability check failed'),
+            ? (t.isLocal ? 'pf rulesets verified; Edge proxy reaches backends' : `Direct ${t.backendAUrl} & ${t.backendBUrl} blocked by pf while Edge ${t.priEdgeIp}:${t.priEdgePort} passes`)
+            : (!t.isLocal && !directBlocked ? `Direct backends open (A blocked=${blockedA}, B blocked=${blockedB}) — load pfctl on Mac 3 & 4!` : 'Firewall rule or edge reachability check failed'),
           detail: t.isLocal
             ? '1-Mac mode: load pfctl with sudo ./phase2/scripts/run_local_sudo_full_demo.sh for kernel lo0 blocking.'
-            : `Direct backend probe: ${directBlocked ? 'BLOCKED (expected)' : 'REACHABLE (apply backend_a_isolation.pf)'} · Edge HTTPS: HTTP ${status(edgeRes)}`,
-          raw: `${directProbe ? `# Direct Backend Probe (${t.backendAUrl})\n${raw(directProbe)}\n\n` : ''}# Edge Access Probe (${t.priEdgeIp}:${t.priEdgePort})\n${raw(edgeRes)}\n\n# phase2/personC/firewall/backend_a_isolation.pf\n${pfA}\n# phase2/personD/firewall/backend_b_isolation.pf\n${pfB}`
+            : `Direct A (:3001): ${blockedA ? 'BLOCKED' : 'OPEN'} · Direct B (:3002): ${blockedB ? 'BLOCKED' : 'OPEN'} · Edge HTTPS: HTTP ${status(edgeRes)}`,
+          raw: `${directProbeA ? `# Direct Backend A Probe (${t.backendAUrl})\n${raw(directProbeA)}\n\n` : ''}${directProbeB ? `# Direct Backend B Probe (${t.backendBUrl})\n${raw(directProbeB)}\n\n` : ''}# Edge Access Probe (${t.priEdgeIp}:${t.priEdgePort})\n${raw(edgeRes)}\n\n# phase2/personC/firewall/backend_a_isolation.pf\n${pfA}\n# phase2/personD/firewall/backend_b_isolation.pf\n${pfB}`
         });
       }
       if (ext === 'D') {

@@ -297,7 +297,25 @@ function renderConfig() {
   checks.find(c => c.id === 'backend-b').method = `HTTP GET ${config.mac4.ip}:3002/api/status`;
   checks.find(c => c.id === 'dns').method = `Direct dig (@${config.mac1.ip}) and system dig`;
   checks.find(c => c.id === 'dns').success = `All four DNS probes return ${config.mac2.ip}.`;
+  const isLocal = config.mac1.ip === '127.0.0.1' && config.mac2.ip === '127.0.0.1';
+  const p2 = ext => phase2Checks.find(x => x.ext === ext);
+  if (isLocal) {
+    p2('A').desc = 'Verifies Primary (127.0.0.1:15353) + Backup (127.0.0.1:15354) dnsmasq and shows Backup continues resolving when Primary stops.';
+    p2('B').desc = 'Confirms explicit 30-second TTL on 127.0.0.1:15353 & :15354 plus controlled IP cutover proof.';
+    p2('C').desc = 'Validates backend_a_isolation.pf & backend_b_isolation.pf rules and confirms Edge proxy (127.0.0.1:8443) reaches backends.';
+    p2('D').desc = 'Probes Primary Edge (127.0.0.1:8443) 6 times, checks passive health directives, and attaches live failover/recovery trace.';
+    p2('E').desc = 'Tests BOTH Primary (127.0.0.1:8443, X-Edge: Primary-Mac2) and Standby (127.0.0.1:8444, X-Edge: Standby-Mac3) with ca.crt.';
+    p2('F').desc = 'Executes live bottom-up verification across 127.0.0.1 (DNS :15354 → IP → TCP :8443 → TLS → HTTP).';
+  } else {
+    p2('A').desc = `Verifies Primary (${config.mac1.ip}:53) + Backup (${config.mac4.ip}:53) dnsmasq both resolve app.teamX.test to ${config.mac2.ip}.`;
+    p2('B').desc = `Confirms explicit 30-second TTL on ${config.mac1.ip}:53 & ${config.mac4.ip}:53 plus controlled IP cutover proof.`;
+    p2('C').desc = `Tests direct ${config.mac3.ip}:3001 & ${config.mac4.ip}:3002 are blocked by pf while Edge ${config.mac2.ip}:8443 succeeds.`;
+    p2('D').desc = `Probes Primary Edge (${config.mac2.ip}:8443) 6 times across Mac 3 & Mac 4 and checks HA passive failover config.`;
+    p2('E').desc = `Tests BOTH Primary Edge (${config.mac2.ip}:8443) and Standby Edge (${config.mac3.ip}:8443, X-Edge: Standby-Mac3) with ca.crt.`;
+    p2('F').desc = `Executes live bottom-up verification on ${config.mac2.ip} (DNS :53 → IP → TCP :8443 → TLS → HTTP).`;
+  }
   renderChecks();
+  renderPhase2Checks();
   $('#config-fields').innerHTML = [['mac1', 'Mac 1 · DNS'], ['mac2', 'Mac 2 · Edge'], ['mac3', 'Mac 3 · Backend A'], ['mac4', 'Mac 4 · Backend B'], ['gateway', 'Gateway']].map(([id, label]) =>
     `<label class="form-field"><span>${label}</span><input name="${id}" required inputmode="decimal" value="${escapeHtml(config[id].ip)}" pattern="(?:[0-9]{1,3}\\.){3}[0-9]{1,3}"></label>`
   ).join('');
