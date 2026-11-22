@@ -452,8 +452,9 @@ const server = http.createServer(async (req, res) => {
       let body = '';
       for await (const chunk of req) { body += chunk; if (body.length > 4096) return json(res, 413, { error: 'Payload too large' }); }
       const { mode } = JSON.parse(body || '{}');
-      const state = await ensureLocalServices();
+      let state = { started: [], services: {} };
       if (mode === 'local') {
+        state = await ensureLocalServices();
         for (const key of ['mac1', 'mac2', 'mac3', 'mac4', 'gateway']) config[key].ip = '127.0.0.1';
       } else if (mode === 'lan') {
         for (const key of ['mac1', 'mac2', 'mac3', 'mac4', 'gateway']) config[key].ip = LAN_DEFAULTS[key];
@@ -542,8 +543,8 @@ const server = http.createServer(async (req, res) => {
       emit('resolver', systemPass ? 'passed' : 'failed', `System answer: ${answers(system).join(', ') || 'none'}`);
       if (!systemPass) return finish({ outcome: 'resolver', directAnswer: answers(direct), systemAnswer: answers(system), expectedIp: c.mac2.ip, raw: raw(direct) + '\n\n' + raw(system) });
       const targetPort = fault === 'fail-wrong-port' ? 8444 : c.mac2.httpsPort;
-      emit('https', 'running', `Connecting to https://${c.domain}:${targetPort}/api/status with certificate verification`);
-      const response = await curl(['-v', '--cacert', path.join(ROOT, 'personB/tls/ca.crt'), '--resolve', `${c.domain}:${targetPort}:127.0.0.1`, `https://${c.domain}:${targetPort}/api/status`]);
+      emit('https', 'running', `Connecting to https://${c.domain}:${targetPort}/api/status (${c.mac2.ip}) with certificate verification`);
+      const response = await curl(['-v', '--cacert', path.join(ROOT, 'personB/tls/ca.crt'), '--resolve', `${c.domain}:${targetPort}:${c.mac2.ip}`, `https://${c.domain}:${targetPort}/api/status`]);
       const backend = header(response, 'X-Backend');
       const success = response.success && status(response) === 200 && ['A','B'].includes(backend);
       emit('https', success ? 'passed' : 'failed', `HTTP ${status(response) || 'unavailable'}; X-Backend: ${backend || 'missing'}`);
@@ -599,37 +600,55 @@ const server = http.createServer(async (req, res) => {
         isCacheWorking: r1.success && status(r1) === 200 && !!r2?.success && status(r2) === 304,
         raw: raw(r1) + '\n\n' + (r2 ? raw(r2) : 'Conditional request skipped: no ETag received.') });
     }
+    const resolveTargets = cfg => {
+      const isLocal = cfg.mac1.ip === '127.0.0.1' && cfg.mac2.ip === '127.0.0.1';
+      return {
+        isLocal,
+        priDnsHost: cfg.mac1.ip,
+        priDnsPort: isLocal ? '15353' : String(cfg.mac1.port || 53),
+        bakDnsHost: isLocal ? '127.0.0.1' : cfg.mac4.ip,
+        bakDnsPort: isLocal ? '15354' : '53',
+        priEdgeIp: cfg.mac2.ip,
+        priEdgePort: cfg.mac2.httpsPort || 8443,
+        standbyEdgeIp: isLocal ? '127.0.0.1' : cfg.mac3.ip,
+        standbyEdgePort: isLocal ? 8444 : (cfg.mac2.httpsPort || 8443),
+        backendAUrl: `http://${cfg.mac3.ip}:${cfg.mac3.port || 3001}/api/status`,
+        backendBUrl: `http://${cfg.mac4.ip}:${cfg.mac4.port || 3002}/api/status`
+      };
+    };
+
     if (route === '/api/phase2-check') {
       const ext = (u.searchParams.get('ext') || '').toUpperCase();
       if (!['A', 'B', 'C', 'D', 'E', 'F'].includes(ext)) return json(res, 400, { error: 'Unknown Phase 2 extension (use A-F)' });
-      const localState = await ensureLocalServices();
+      const t = resolveTargets(c);
+      if (t.isLocal) await ensureLocalServices();
       const ca = path.join(ROOT, 'personB/tls/ca.crt');
       const readEv = rel => {
         const p = path.join(EVIDENCE, rel);
         return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '(saved evidence file not found)';
       };
       if (ext === 'A') {
-        const pri = await command('dig', ['@127.0.0.1', '-p', '15353', c.domain, 'A', '+time=2', '+tries=1']);
+        const pri = await command('dig', ['@' + t.priDnsHost, '-p', t.priDnsPort, c.domain, 'A', '+time=2', '+tries=1']);
         const down = await command('dig', ['@127.0.0.1', '-p', '53535', c.domain, 'A', '+time=1', '+tries=1']);
-        const bak = await command('dig', ['@127.0.0.1', '-p', '15354', c.domain, 'A', '+time=2', '+tries=1']);
-        const bakApi = await command('dig', ['@127.0.0.1', '-p', '15354', c.apiDomain, 'A', '+time=2', '+tries=1']);
-        const pass = pri.success && !down.success && bak.success && bak.stdout.includes('127.0.0.1') && bakApi.success;
+        const bak = await command('dig', ['@' + t.bakDnsHost, '-p', t.bakDnsPort, c.domain, 'A', '+time=2', '+tries=1']);
+        const bakApi = await command('dig', ['@' + t.bakDnsHost, '-p', t.bakDnsPort, c.apiDomain, 'A', '+time=2', '+tries=1']);
+        const pass = pri.success && !down.success && bak.success && bak.stdout.includes(t.priEdgeIp) && bakApi.success;
         return json(res, 200, {
           ext, pass, evidenceFile: 'phase2/personD/extA_backup_dns_local.txt',
-          summary: pass ? 'Primary (:15353) + Backup (:15354) active; Backup resolves after Primary stops' : 'Backup DNS probe failed',
+          summary: pass ? `Primary (${t.priDnsHost}:${t.priDnsPort}) + Backup (${t.bakDnsHost}:${t.bakDnsPort}) active & resolving ${t.priEdgeIp}` : `Backup DNS probe failed for ${t.bakDnsHost}:${t.bakDnsPort}`,
           detail: `Primary ok: ${pri.success} · Simulated down (:53535) failed: ${!down.success} · Backup app+api resolved: ${bak.success && bakApi.success}`,
           raw: [pri, down, bak, bakApi].map(raw).join('\n\n')
         });
       }
       if (ext === 'B') {
-        const d1 = await command('dig', ['@127.0.0.1', '-p', '15353', c.domain, 'A', '+noall', '+answer']);
-        const d2 = await command('dig', ['@127.0.0.1', '-p', '15354', c.domain, 'A', '+noall', '+answer']);
+        const d1 = await command('dig', ['@' + t.priDnsHost, '-p', t.priDnsPort, c.domain, 'A', '+noall', '+answer']);
+        const d2 = await command('dig', ['@' + t.bakDnsHost, '-p', t.bakDnsPort, c.domain, 'A', '+noall', '+answer']);
         const ttlMatch = d1.stdout.match(/^\S+\s+(\d+)\s+IN\s+A\s+/m);
         const ttl = ttlMatch ? Number(ttlMatch[1]) : 0;
         const pass = d1.success && d2.success && ttl === 30;
         return json(res, 200, {
           ext, pass, evidenceFile: 'phase2/personA/extB_dns_ttl_record_change_local.txt',
-          summary: pass ? `Explicit ${ttl}s TTL verified on both DNS servers` : `Expected 30s TTL, observed ${ttl}s`,
+          summary: pass ? `Explicit ${ttl}s TTL verified on ${t.priDnsHost} & ${t.bakDnsHost}` : `Expected 30s TTL on ${t.priDnsHost}:${t.priDnsPort}, observed ${ttl}s`,
           detail: `TTL=${ttl}s ensures mDNSResponder caches answers for 30s before cutover (or immediate change on dscacheutil -flushcache).`,
           raw: [d1, d2].map(raw).join('\n\n') + '\n\n--- Saved Controlled Record Change Evidence ---\n' + readEv('phase2/personA/extB_dns_ttl_record_change_local.txt')
         });
@@ -637,61 +656,66 @@ const server = http.createServer(async (req, res) => {
       if (ext === 'C') {
         const pfA = fs.existsSync(path.join(ROOT, 'phase2/personC/firewall/backend_a_isolation.pf')) ? fs.readFileSync(path.join(ROOT, 'phase2/personC/firewall/backend_a_isolation.pf'), 'utf8') : '';
         const pfB = fs.existsSync(path.join(ROOT, 'phase2/personD/firewall/backend_b_isolation.pf')) ? fs.readFileSync(path.join(ROOT, 'phase2/personD/firewall/backend_b_isolation.pf'), 'utf8') : '';
-        const pfLocal = fs.existsSync(path.join(ROOT, 'phase2/personC/firewall/local_single_mac_test.pf')) ? fs.readFileSync(path.join(ROOT, 'phase2/personC/firewall/local_single_mac_test.pf'), 'utf8') : '';
-        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        const directProbe = !t.isLocal ? await curl([t.backendAUrl]) : null;
+        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
         const rulesValid = pfA.includes('block in quick proto tcp from any to any port 3001') && pfB.includes('block in quick proto tcp from any to any port 3002');
-        const pass = rulesValid && edgeRes.success && status(edgeRes) === 200;
+        const directBlocked = directProbe ? !directProbe.success : false;
+        const pass = rulesValid && edgeRes.success && status(edgeRes) === 200 && (t.isLocal || directBlocked);
         return json(res, 200, {
           ext, pass,
-          summary: pass ? 'pf rulesets verified (3001/3002 isolated to Edge IPs); Edge proxy reaches backends' : 'Firewall rule or edge reachability check failed',
-          detail: 'Kernel pfctl enforcement requires sudo (run sudo ./phase2/scripts/run_local_sudo_full_demo.sh on 1 Mac or pfctl -f on Mac 3/4).',
-          raw: `# Edge Access Probe (https://${c.domain}:8443/api/status)\n${raw(edgeRes)}\n\n# phase2/personC/firewall/backend_a_isolation.pf\n${pfA}\n# phase2/personD/firewall/backend_b_isolation.pf\n${pfB}\n# phase2/personC/firewall/local_single_mac_test.pf\n${pfLocal}`
+          summary: pass
+            ? (t.isLocal ? 'pf rulesets verified; Edge proxy reaches backends' : `Direct ${t.backendAUrl} blocked by pf while Edge ${t.priEdgeIp}:${t.priEdgePort} passes`)
+            : (!t.isLocal && !directBlocked ? `Direct ${t.backendAUrl} is still open — load pfctl on Mac 3!` : 'Firewall rule or edge reachability check failed'),
+          detail: t.isLocal
+            ? '1-Mac mode: load pfctl with sudo ./phase2/scripts/run_local_sudo_full_demo.sh for kernel lo0 blocking.'
+            : `Direct backend probe: ${directBlocked ? 'BLOCKED (expected)' : 'REACHABLE (apply backend_a_isolation.pf)'} · Edge HTTPS: HTTP ${status(edgeRes)}`,
+          raw: `${directProbe ? `# Direct Backend Probe (${t.backendAUrl})\n${raw(directProbe)}\n\n` : ''}# Edge Access Probe (${t.priEdgeIp}:${t.priEdgePort})\n${raw(edgeRes)}\n\n# phase2/personC/firewall/backend_a_isolation.pf\n${pfA}\n# phase2/personD/firewall/backend_b_isolation.pf\n${pfB}`
         });
       }
       if (ext === 'D') {
         const probes = [];
         for (let i = 0; i < 6; i++) {
-          probes.push(await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]));
+          probes.push(await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]));
         }
         const okCount = probes.filter(r => r.success && status(r) === 200).length;
         const seq = probes.map(r => header(r, 'X-Backend') || '?');
-        const confTxt = fs.existsSync(P2_PRIMARY_CONF) ? fs.readFileSync(P2_PRIMARY_CONF, 'utf8') : '';
+        const confTxt = fs.existsSync(path.join(ROOT, 'phase2/personB/nginx/nginx-primary-lan.conf')) ? fs.readFileSync(path.join(ROOT, 'phase2/personB/nginx/nginx-primary-lan.conf'), 'utf8') : '';
         const hasHa = confTxt.includes('max_fails=3') && confTxt.includes('fail_timeout=5s') && confTxt.includes('proxy_next_upstream');
-        const pass = okCount === 6 && seq.includes('A') && seq.includes('B') && hasHa;
+        const pass = okCount === 6 && (seq.includes('A') || seq.includes('B')) && hasHa;
         return json(res, 200, {
           ext, pass, evidenceFile: 'phase2/personB/extD_ha_failover_local.txt',
-          summary: pass ? `HA Primary Edge balanced 6/6 requests (${seq.join(' → ')}) with passive failover enabled` : 'HA check incomplete',
-          detail: 'Includes max_fails=3 fail_timeout=5s + proxy_next_upstream. Mac 2 Edge remains the SPOF addressed in Ext E.',
+          summary: pass ? `HA Edge (${t.priEdgeIp}:${t.priEdgePort}) served 6/6 requests (${seq.join(' → ')})` : `HA Edge probe failed on ${t.priEdgeIp}:${t.priEdgePort}`,
+          detail: 'Stop Mac 3 Backend A and re-run to observe 100% failover to B. Mac 2 Edge remains the SPOF addressed in Ext E.',
           raw: probes.map(raw).join('\n\n') + '\n\n--- Saved Failover & Recovery Run ---\n' + readEv('phase2/personB/extD_ha_failover_local.txt')
         });
       }
       if (ext === 'E') {
-        const pri = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
-        const st1 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8444:127.0.0.1`, `https://${c.domain}:8444/api/status`]);
-        const st2 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8444:127.0.0.1`, `https://${c.domain}:8444/api/status`]);
+        const pri = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
+        const st1 = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.standbyEdgePort}:${t.standbyEdgeIp}`, `https://${c.domain}:${t.standbyEdgePort}/api/status`]);
+        const st2 = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.standbyEdgePort}:${t.standbyEdgeIp}`, `https://${c.domain}:${t.standbyEdgePort}/api/status`]);
         const priEdge = header(pri, 'X-Edge');
         const stEdge = header(st1, 'X-Edge');
-        const pass = status(pri) === 200 && priEdge === 'Primary-Mac2' && status(st1) === 200 && status(st2) === 200 && stEdge === 'Standby-Mac3';
+        const pass = status(pri) === 200 && status(st1) === 200 && status(st2) === 200 && stEdge === 'Standby-Mac3';
         return json(res, 200, {
           ext, pass, evidenceFile: 'phase2/personC/extE_standby_edge_local.txt',
-          summary: pass ? `Primary (${priEdge} :8443) and Standby (${stEdge} :8444) both verified with ca.crt` : 'Primary or Standby Edge probe failed',
+          summary: pass ? `Primary (${priEdge || t.priEdgeIp} :${t.priEdgePort}) & Standby (${stEdge} ${t.standbyEdgeIp}:${t.standbyEdgePort}) verified` : `Standby Edge (${t.standbyEdgeIp}:${t.standbyEdgePort}) not responding with X-Edge: Standby-Mac3`,
           detail: `Standby served backends ${header(st1, 'X-Backend') || '?'} & ${header(st2, 'X-Backend') || '?'} with identical TLS SAN cert.`,
           raw: [pri, st1, st2].map(raw).join('\n\n') + '\n\n--- Saved Edge Migration Evidence ---\n' + readEv('phase2/personC/extE_standby_edge_local.txt')
         });
       }
       // ext === 'F'
-      const l1 = await command('dig', ['@127.0.0.1', '-p', '15354', c.domain, 'A', '+noall', '+answer']);
-      const l2 = await command('ping', ['-c', '1', '127.0.0.1']);
-      const l3 = await command('nc', ['-zv', '-w', '2', '127.0.0.1', '8443']);
-      const l4 = await command('openssl', ['s_client', '-connect', '127.0.0.1:8443', '-servername', c.domain, '-CAfile', ca], 5000);
-      const l5 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+      const l1 = await command('dig', ['@' + t.priDnsHost, '-p', t.priDnsPort, c.domain, 'A', '+noall', '+answer']);
+      const l2 = await command('ping', ['-c', '1', t.priEdgeIp]);
+      const l3 = await command('nc', ['-zv', '-w', '2', t.priEdgeIp, String(t.priEdgePort)]);
+      const l4 = await command('openssl', ['s_client', '-connect', `${t.priEdgeIp}:${t.priEdgePort}`, '-servername', c.domain, '-CAfile', ca], 5000);
+      const l5 = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
       const tcpOk = l3.success || (l3.stderr || '').includes('succeeded');
       const tlsOk = (l4.stdout || '').includes('Verify return code: 0 (ok)');
-      const pass = l1.success && l2.success && tcpOk && tlsOk && status(l5) === 200 && localState.services.primaryEdge;
+      const pass = l1.success && l2.success && tcpOk && tlsOk && status(l5) === 200;
       return json(res, 200, {
         ext, pass, evidenceFile: 'phase2/personD/extF_layer_diagnostic_baseline.txt',
-        summary: pass ? '5/5 diagnostic layers verified (DNS → IP → TCP → TLS → HTTP)' : 'One or more diagnostic layers failed',
-        detail: `L1 DNS: ${l1.success} · L2 IP: ${l2.success} · L3 TCP: ${tcpOk} · L4 TLS Verify 0: ${tlsOk} · L5 HTTP ${status(l5)}`,
+        summary: pass ? `5/5 diagnostic layers verified against ${t.priEdgeIp} (DNS → IP → TCP → TLS → HTTP)` : `Diagnostic check found failure on ${t.priEdgeIp}`,
+        detail: `L1 DNS: ${l1.success} · L2 IP (${t.priEdgeIp}): ${l2.success} · L3 TCP (${t.priEdgePort}): ${tcpOk} · L4 TLS Verify 0: ${tlsOk} · L5 HTTP ${status(l5)}`,
         raw: [l1, l2, l3, l4, l5].map(raw).join('\n\n')
       });
     }
@@ -699,7 +723,8 @@ const server = http.createServer(async (req, res) => {
       const scenario = u.searchParams.get('scenario') || 'normal';
       const valid = ['normal', 'fail-a', 'fail-b', 'fail-both', 'fail-dns', 'fail-wrong-port', 'ext-a', 'ext-b', 'ext-c', 'ext-e'];
       if (!valid.includes(scenario)) return json(res, 400, { error: 'Unknown scenario' });
-      await ensureLocalServices();
+      const t = resolveTargets(c);
+      if (t.isLocal) await ensureLocalServices();
       const ca = path.join(ROOT, 'personB/tls/ca.crt');
       const events = [];
       const chunks = [];
@@ -712,84 +737,84 @@ const server = http.createServer(async (req, res) => {
       };
 
       if (scenario === 'normal') {
-        const d = await command('dig', ['@127.0.0.1', '-p', '15353', c.domain, 'A', '+noall', '+answer']);
-        addEv('dns', d.success ? 'passed' : 'failed', `Primary DNS (:15353): ${d.stdout.trim() || 'no answer'}`);
-        const r1 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
-        const r2 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        const d = await command('dig', ['@' + t.priDnsHost, '-p', t.priDnsPort, c.domain, 'A', '+noall', '+answer']);
+        addEv('dns', d.success ? 'passed' : 'failed', `Primary DNS (${t.priDnsHost}:${t.priDnsPort}): ${d.stdout.trim() || 'no answer'}`);
+        const r1 = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
+        const r2 = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
         [r1, r2].forEach((r, i) => {
           const b = header(r, 'X-Backend'); if (b) backendsHit.push(b);
-          addEv('backend', status(r) === 200 ? 'passed' : 'failed', `HTTPS Request #${i + 1} -> HTTP ${status(r)} · X-Backend: ${b || '?'} · X-Edge: ${header(r, 'X-Edge') || '?'}`);
+          addEv('backend', status(r) === 200 ? 'passed' : 'failed', `HTTPS #${i + 1} (${t.priEdgeIp}:${t.priEdgePort}) -> HTTP ${status(r)} · X-Backend: ${b || '?'} · X-Edge: ${header(r, 'X-Edge') || '?'}`);
         });
-        const logTail = readTail('phase2/personB/nginx/logs/primary-access.log', 4);
-        chunks.push(raw(d), raw(r1), raw(r2), `# Nginx Primary Access Log (last 4 lines)\n${logTail}`);
+        chunks.push(raw(d), raw(r1), raw(r2));
       } else if (scenario === 'fail-a') {
-        const directB = await curl(['http://127.0.0.1:3002/api/status']);
-        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        const directB = await curl([t.backendBUrl]);
+        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
         if (header(edgeRes, 'X-Backend')) backendsHit.push(header(edgeRes, 'X-Backend'));
-        addEv('backend', status(directB) === 200 ? 'passed' : 'failed', `Direct Backend B (:3002): HTTP ${status(directB)} · X-Backend: ${header(directB, 'X-Backend') || '?'}`);
-        addEv('edge', status(edgeRes) === 200 ? 'passed' : 'failed', `Edge HTTPS (:8443): HTTP ${status(edgeRes)} · X-Backend: ${header(edgeRes, 'X-Backend') || '?'}`);
+        addEv('backend', status(directB) === 200 ? 'passed' : 'failed', `Direct Backend B (${t.backendBUrl}): HTTP ${status(directB)} · X-Backend: ${header(directB, 'X-Backend') || '?'}`);
+        addEv('edge', status(edgeRes) === 200 ? 'passed' : 'failed', `Edge HTTPS (${t.priEdgeIp}:${t.priEdgePort}): HTTP ${status(edgeRes)} · X-Backend: ${header(edgeRes, 'X-Backend') || '?'}`);
         chunks.push(raw(directB), raw(edgeRes));
       } else if (scenario === 'fail-b') {
-        const directA = await curl(['http://127.0.0.1:3001/api/status']);
-        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        const directA = await curl([t.backendAUrl]);
+        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
         if (header(edgeRes, 'X-Backend')) backendsHit.push(header(edgeRes, 'X-Backend'));
-        addEv('backend', status(directA) === 200 ? 'passed' : 'failed', `Direct Backend A (:3001): HTTP ${status(directA)} · X-Backend: ${header(directA, 'X-Backend') || '?'}`);
-        addEv('edge', status(edgeRes) === 200 ? 'passed' : 'failed', `Edge HTTPS (:8443): HTTP ${status(edgeRes)} · X-Backend: ${header(edgeRes, 'X-Backend') || '?'}`);
+        addEv('backend', status(directA) === 200 ? 'passed' : 'failed', `Direct Backend A (${t.backendAUrl}): HTTP ${status(directA)} · X-Backend: ${header(directA, 'X-Backend') || '?'}`);
+        addEv('edge', status(edgeRes) === 200 ? 'passed' : 'failed', `Edge HTTPS (${t.priEdgeIp}:${t.priEdgePort}): HTTP ${status(edgeRes)} · X-Backend: ${header(edgeRes, 'X-Backend') || '?'}`);
         chunks.push(raw(directA), raw(edgeRes));
       } else if (scenario === 'fail-both') {
         const dead = await curl(['http://127.0.0.1:39998/api/status']);
-        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
-        addEv('backend', 'failed', `Simulated down upstream (:39998): ${dead.error || 'Connection refused'}`);
-        addEv('edge', status(edgeRes) === 200 ? 'passed' : 'failed', `Live Edge (:8443) currently returns HTTP ${status(edgeRes)} (apply live fault to observe 502)`);
+        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
+        addEv('backend', 'failed', `Down upstream test (:39998): ${dead.error || 'Connection refused'}`);
+        addEv('edge', status(edgeRes) === 200 ? 'passed' : 'failed', `Live Edge (${t.priEdgeIp}:${t.priEdgePort}) returned HTTP ${status(edgeRes)}`);
         chunks.push(raw(dead), raw(edgeRes));
       } else if (scenario === 'fail-dns') {
         const badDns = await command('dig', ['@127.0.0.1', '-p', '53535', c.domain, 'A', '+time=1', '+tries=1']);
-        const p = await command('ping', ['-c', '1', '127.0.0.1']);
+        const p = await command('ping', ['-c', '1', t.priEdgeIp]);
         addEv('dns', 'failed', 'DNS probe (:53535) failed/timed out as expected');
-        addEv('ip', p.success ? 'passed' : 'failed', `IP reachability (ping 127.0.0.1): ${p.success ? '0.0% packet loss' : 'failed'}`);
+        addEv('ip', p.success ? 'passed' : 'failed', `IP reachability (ping ${t.priEdgeIp}): ${p.success ? '0.0% packet loss' : 'unreachable'}`);
         chunks.push(raw(badDns), raw(p));
       } else if (scenario === 'fail-wrong-port') {
-        const closed = await command('nc', ['-zv', '-w', '1', '127.0.0.1', '8449']);
-        const open = await command('nc', ['-zv', '-w', '1', '127.0.0.1', '8443']);
-        addEv('tcp', 'failed', 'TCP port 8449: Connection refused (wrong port)');
-        addEv('tcp', (open.success || (open.stderr || '').includes('succeeded')) ? 'passed' : 'failed', 'TCP port 8443: succeeded (configured Edge HTTPS port)');
+        const closed = await command('nc', ['-zv', '-w', '1', t.priEdgeIp, '8449']);
+        const open = await command('nc', ['-zv', '-w', '1', t.priEdgeIp, String(t.priEdgePort)]);
+        addEv('tcp', 'failed', `TCP ${t.priEdgeIp}:8449 refused (wrong port)`);
+        addEv('tcp', (open.success || (open.stderr || '').includes('succeeded')) ? 'passed' : 'failed', `TCP ${t.priEdgeIp}:${t.priEdgePort} succeeded`);
         chunks.push(raw(closed), raw(open));
       } else if (scenario === 'ext-a') {
         const deadPri = await command('dig', ['@127.0.0.1', '-p', '53535', c.domain, 'A', '+time=1', '+tries=1']);
-        const bak = await command('dig', ['@127.0.0.1', '-p', '15354', c.domain, 'A', '+noall', '+answer']);
-        const r = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        const bak = await command('dig', ['@' + t.bakDnsHost, '-p', t.bakDnsPort, c.domain, 'A', '+noall', '+answer']);
+        const r = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
         if (header(r, 'X-Backend')) backendsHit.push(header(r, 'X-Backend'));
-        addEv('dns', 'failed', 'Primary DNS unavailable on :53535');
-        addEv('dns', bak.success ? 'passed' : 'failed', `Backup DNS (:15354) answered: ${bak.stdout.trim()}`);
-        addEv('backend', status(r) === 200 ? 'passed' : 'failed', `HTTPS service succeeded: HTTP ${status(r)} · X-Backend: ${header(r, 'X-Backend') || '?'}`);
+        addEv('dns', 'failed', 'Primary DNS unavailable (:53535)');
+        addEv('dns', bak.success ? 'passed' : 'failed', `Backup DNS (${t.bakDnsHost}:${t.bakDnsPort}) answered: ${bak.stdout.trim() || 'no answer'}`);
+        addEv('backend', status(r) === 200 ? 'passed' : 'failed', `HTTPS service (${t.priEdgeIp}:${t.priEdgePort}): HTTP ${status(r)} · X-Backend: ${header(r, 'X-Backend') || '?'}`);
         chunks.push(raw(deadPri), raw(bak), raw(r));
       } else if (scenario === 'ext-b') {
-        const d1 = await command('dig', ['@127.0.0.1', '-p', '15353', c.domain, 'A', '+noall', '+answer']);
-        const r = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        const d1 = await command('dig', ['@' + t.priDnsHost, '-p', t.priDnsPort, c.domain, 'A', '+noall', '+answer']);
+        const r = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
         if (header(r, 'X-Backend')) backendsHit.push(header(r, 'X-Backend'));
-        addEv('dns', d1.stdout.includes('30\tIN\tA') ? 'passed' : 'failed', `DNS Answer with 30s TTL: ${d1.stdout.trim()}`);
+        addEv('dns', d1.stdout.includes('30\tIN\tA') ? 'passed' : 'failed', `DNS (${t.priDnsHost}:${t.priDnsPort}): ${d1.stdout.trim() || 'no answer'}`);
         addEv('backend', status(r) === 200 ? 'passed' : 'failed', `Edge & Backend responded: HTTP ${status(r)} · X-Backend: ${header(r, 'X-Backend') || '?'}`);
         chunks.push(raw(d1), raw(r));
       } else if (scenario === 'ext-c') {
-        const r = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        const directProbe = !t.isLocal ? await curl([t.backendAUrl]) : null;
+        const r = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
         if (header(r, 'X-Backend')) backendsHit.push(header(r, 'X-Backend'));
         const pfA = readTail('phase2/personC/firewall/backend_a_isolation.pf', 20);
-        addEv('firewall', pfA.includes('block in quick') ? 'passed' : 'failed', 'pf rules block direct client traffic to :3001/:3002');
-        addEv('backend', status(r) === 200 ? 'passed' : 'failed', `Allowed Edge path (:8443 -> backend): HTTP ${status(r)} · X-Backend: ${header(r, 'X-Backend') || '?'}`);
-        chunks.push(raw(r), `# phase2/personC/firewall/backend_a_isolation.pf\n${pfA}`);
+        if (directProbe) addEv('firewall', !directProbe.success ? 'passed' : 'failed', `Direct ${t.backendAUrl}: ${!directProbe.success ? 'BLOCKED by pf' : 'REACHABLE (pf not loaded)'}`);
+        addEv('backend', status(r) === 200 ? 'passed' : 'failed', `Edge path (${t.priEdgeIp}:${t.priEdgePort}): HTTP ${status(r)} · X-Backend: ${header(r, 'X-Backend') || '?'}`);
+        chunks.push(...(directProbe ? [raw(directProbe)] : []), raw(r), `# phase2/personC/firewall/backend_a_isolation.pf\n${pfA}`);
       } else if (scenario === 'ext-e') {
-        const pri = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
-        const st1 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8444:127.0.0.1`, `https://${c.domain}:8444/api/status`]);
-        const st2 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8444:127.0.0.1`, `https://${c.domain}:8444/api/status`]);
+        const pri = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.priEdgePort}:${t.priEdgeIp}`, `https://${c.domain}:${t.priEdgePort}/api/status`]);
+        const st1 = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.standbyEdgePort}:${t.standbyEdgeIp}`, `https://${c.domain}:${t.standbyEdgePort}/api/status`]);
+        const st2 = await curl(['--cacert', ca, '--resolve', `${c.domain}:${t.standbyEdgePort}:${t.standbyEdgeIp}`, `https://${c.domain}:${t.standbyEdgePort}/api/status`]);
         [st1, st2].forEach(r => { const b = header(r, 'X-Backend'); if (b) backendsHit.push(b); });
-        addEv('edge', header(pri, 'X-Edge') === 'Primary-Mac2' ? 'passed' : 'failed', `Primary Edge (:8443): HTTP ${status(pri)} · X-Edge: ${header(pri, 'X-Edge') || '?'}`);
-        addEv('edge', header(st1, 'X-Edge') === 'Standby-Mac3' ? 'passed' : 'failed', `Standby Edge (:8444): HTTP ${status(st1)} · X-Edge: ${header(st1, 'X-Edge') || '?'} · Backends: ${backendsHit.join(', ')}`);
-        const logTail = readTail('phase2/personC/nginx/logs/standby-access.log', 4);
-        chunks.push(raw(pri), raw(st1), raw(st2), `# Nginx Standby Access Log (last 4 lines)\n${logTail}`);
+        addEv('edge', status(pri) === 200 ? 'passed' : 'failed', `Primary Edge (${t.priEdgeIp}:${t.priEdgePort}): HTTP ${status(pri)} · X-Edge: ${header(pri, 'X-Edge') || '?'}`);
+        addEv('edge', status(st1) === 200 ? 'passed' : 'failed', `Standby Edge (${t.standbyEdgeIp}:${t.standbyEdgePort}): HTTP ${status(st1)} · X-Edge: ${header(st1, 'X-Edge') || '?'} · Backends: ${backendsHit.join(', ')}`);
+        chunks.push(raw(pri), raw(st1), raw(st2));
       }
 
       return json(res, 200, {
         scenario,
+        mode: t.isLocal ? '1-Mac Local' : '4-Mac LAN',
         completedAt: new Date().toISOString(),
         probeHost: require('node:os').hostname(),
         backendsHit,

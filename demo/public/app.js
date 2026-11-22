@@ -301,6 +301,13 @@ function renderConfig() {
   $('#config-fields').innerHTML = [['mac1', 'Mac 1 · DNS'], ['mac2', 'Mac 2 · Edge'], ['mac3', 'Mac 3 · Backend A'], ['mac4', 'Mac 4 · Backend B'], ['gateway', 'Gateway']].map(([id, label]) =>
     `<label class="form-field"><span>${label}</span><input name="${id}" required inputmode="decimal" value="${escapeHtml(config[id].ip)}" pattern="(?:[0-9]{1,3}\\.){3}[0-9]{1,3}"></label>`
   ).join('');
+  const inlineForm = $('#inline-ip-form');
+  if (inlineForm) {
+    for (const id of ['mac1', 'mac2', 'mac3', 'mac4', 'gateway']) {
+      const inp = inlineForm.querySelector(`[name="${id}"]`);
+      if (inp) inp.value = config[id].ip;
+    }
+  }
 }
 
 function interpret(id, data) {
@@ -642,16 +649,16 @@ async function runAllPhase2() {
 }
 
 async function switchLabMode(mode) {
-  setNotice(mode === 'local' ? 'Starting local services (3001, 3002, 8443, 8444, 15353, 15354) and switching targets to 127.0.0.1…' : 'Switching probe targets back to 4-Mac Team LAN IPs (10.7.x.x)…', 'info');
+  setNotice(mode === 'local' ? 'Starting local services (3001, 3002, 8443, 8444, 15353, 15354) and switching targets to 127.0.0.1…' : 'Switching probe targets to 4-Mac Team LAN IPs (10.7.17.94 / 10.7.3.128 / 10.7.6.84 / 10.7.17.147)…', 'info');
   try {
     const res = await apiPost('/api/phase2-ensure-local', { mode });
     config = res.config;
     renderConfig();
-    runState = {}; logState = {}; renderChecks();
+    runState = {}; logState = {}; phase2State = {}; renderChecks(); renderPhase2Checks();
     if ($('#config-dialog')?.open) $('#config-dialog').close();
     setNotice(mode === 'local'
-      ? `1-Mac Local Mode active (127.0.0.1). All 6 local services ready${res.started?.length ? ` (started: ${res.started.join(', ')})` : ''}. You can run all 8 Phase 1 + 6 Phase 2 checks now!`
-      : '4-Mac Team LAN Mode active (10.7.x.x). Make sure all 4 laptops are reachable on Wi-Fi.', 'success');
+      ? `1-Mac Local Mode active (127.0.0.1). All 6 local services ready${res.started?.length ? ` (started: ${res.started.join(', ')})` : ''}.`
+      : '4-Mac Team LAN Mode active! Probes now target the 4 separate laptops directly.', 'success');
   } catch (err) {
     setNotice('Could not switch lab mode: ' + err.message, 'warn');
   }
@@ -689,8 +696,24 @@ function setup() {
     if (b) runPhase2Check(b.dataset.p2);
   });
   $('#btn-local-mode')?.addEventListener('click', () => switchLabMode('local'));
+  $('#btn-lan-mode')?.addEventListener('click', () => switchLabMode('lan'));
+  $('#inline-reset-lan')?.addEventListener('click', () => switchLabMode('lan'));
   $('#preset-local')?.addEventListener('click', () => switchLabMode('local'));
   $('#preset-lan')?.addEventListener('click', () => switchLabMode('lan'));
+  $('#inline-ip-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const form = new FormData(e.target), update = {};
+    for (const id of ['mac1', 'mac2', 'mac3', 'mac4', 'gateway']) update[id] = { ip: String(form.get(id) || '').trim() };
+    try {
+      const d = await apiPost('/api/config', update);
+      config = d.config;
+      renderConfig();
+      runState = {}; logState = {}; phase2State = {}; renderChecks(); renderPhase2Checks();
+      setNotice(`Saved live laptop IPs (${config.mac1.ip} · ${config.mac2.ip} · ${config.mac3.ip} · ${config.mac4.ip}). All probes now target these laptops!`, 'success');
+    } catch (err) {
+      setNotice('Invalid IP address: ' + err.message, 'warn');
+    }
+  });
   $('#refresh-evidence').addEventListener('click', loadEvidence);
   $('#persona-filters')?.addEventListener('click', e => {
     const b = e.target.closest('[data-person]');
