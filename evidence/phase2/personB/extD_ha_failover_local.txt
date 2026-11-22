@@ -1,0 +1,84 @@
+# Extension D — High-Availability Backend Failover (Sun Nov 22 18:52:35 IST 2026)
+## Phase 1: Both Backends A & B healthy (4 requests)
+--- Request 1 ---
+HTTP/1.1 200 OK
+X-Backend: A
+X-Edge: Primary-Mac2
+{"backend":"A","status":"ok","timestamp":"2026-11-22T13:22:35.775Z"}
+--- Request 2 ---
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+{"backend":"B","status":"ok","timestamp":"2026-11-22T13:22:35.786Z"}
+--- Request 3 ---
+HTTP/1.1 200 OK
+X-Backend: A
+X-Edge: Primary-Mac2
+{"backend":"A","status":"ok","timestamp":"2026-11-22T13:22:35.797Z"}
+--- Request 4 ---
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+{"backend":"B","status":"ok","timestamp":"2026-11-22T13:22:35.807Z"}
+
+## Phase 2: Backend A stopped (6 requests -> all must be 200 OK via Backend B)
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+
+## Phase 3: Backend A restarted + fail_timeout elapsed (6 requests -> A & B resume)
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+HTTP/1.1 200 OK
+X-Backend: A
+X-Edge: Primary-Mac2
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+HTTP/1.1 200 OK
+X-Backend: A
+X-Edge: Primary-Mac2
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+HTTP/1.1 200 OK
+X-Backend: A
+X-Edge: Primary-Mac2
+
+## Nginx Primary Error Log Excerpt (upstream failover events)
+2026/11/22 18:52:35 [info] 9264#0: *1 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:35 [info] 9264#0: *3 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:35 [info] 9264#0: *5 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:35 [info] 9264#0: *6 kevent() reported that client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:36 [error] 9264#0: *7 kevent() reported that connect() failed (61: Connection refused) while connecting to upstream, client: 127.0.0.1, server: localhost, request: "GET /api/status HTTP/1.1", upstream: "http://127.0.0.1:3001/api/status", host: "app.teamX.test:8443"
+2026/11/22 18:52:36 [info] 9264#0: *7 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:36 [info] 9264#0: *9 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:36 [error] 9264#0: *10 kevent() reported that connect() failed (61: Connection refused) while connecting to upstream, client: 127.0.0.1, server: localhost, request: "GET /api/status HTTP/1.1", upstream: "http://127.0.0.1:3001/api/status", host: "app.teamX.test:8443"
+2026/11/22 18:52:36 [info] 9264#0: *10 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:36 [info] 9264#0: *12 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:36 [error] 9264#0: *13 kevent() reported that connect() failed (61: Connection refused) while connecting to upstream, client: 127.0.0.1, server: localhost, request: "GET /api/status HTTP/1.1", upstream: "http://127.0.0.1:3001/api/status", host: "app.teamX.test:8443"
+2026/11/22 18:52:36 [warn] 9264#0: *13 upstream server temporarily disabled while connecting to upstream, client: 127.0.0.1, server: localhost, request: "GET /api/status HTTP/1.1", upstream: "http://127.0.0.1:3001/api/status", host: "app.teamX.test:8443"
+2026/11/22 18:52:36 [info] 9264#0: *13 kevent() reported that client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:36 [info] 9264#0: *15 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:42 [info] 9264#0: *16 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:42 [info] 9264#0: *18 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:42 [info] 9264#0: *20 kevent() reported that client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:42 [info] 9264#0: *21 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:42 [info] 9264#0: *22 client 127.0.0.1 closed keepalive connection
+2026/11/22 18:52:42 [info] 9264#0: *23 client 127.0.0.1 closed keepalive connection

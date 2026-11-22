@@ -9,7 +9,7 @@
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <aside class="sidebar">
-  <a class="brand" href="#overview"><span class="brand-mark">N<span>↗</span></span><span>Network Lab<small>COMPUTER NETWORKS / PHASE 1</small></span></a>
+  <a class="brand" href="#overview"><span class="brand-mark">N<span>↗</span></span><span>Network Lab<small>COMPUTER NETWORKS / PHASE 1 &amp; 2</small></span></a>
   <p class="nav-label">WORKSPACE</p>
   <nav aria-label="Main navigation">
     <a class="active" href="#overview"><span>◎</span> Overview</a>
@@ -17,6 +17,7 @@
     <a href="#checks"><span>☷</span> Live checks <span class="nav-count">8</span></a>
     <a href="#packets"><span>◈</span> Packet sniffer (Stage 8)</a>
     <a href="#failures"><span>↯</span> Failure guide</a>
+    <a href="#phase2"><span>🛡</span> Phase 2 resilience <span class="nav-count">6</span></a>
     <a href="#evidence"><span>▤</span> Evidence library</a>
   </nav>
   <div class="sidebar-note"><span class="eyebrow">THE EXPERIMENT</span><p>One private network.<br>Four machines.<br>A request you can trace.</p><span class="small muted">DNS → TCP → TLS → HTTP</span></div>
@@ -26,8 +27,25 @@
   <header class="topbar"><span>Workspace <span class="crumb">/</span> <strong>Platform overview</strong></span><span class="local-badge">LOCAL DEMONSTRATION</span></header>
   <main id="main">
     <section id="overview" class="overview">
-      <div class="heading-row"><div><p class="eyebrow">PRIVATE NETWORK SERVICE PLATFORM</p><h1>Follow the request.<br><span>Understand the network.</span></h1><p class="intro">Explore how four Macs resolve a name, secure a connection,<br class="desktop-break"> and share the work. Then inspect the evidence behind each step.</p></div><div class="hero-actions"><button class="button primary" id="run-all">Run live checks <span>↗</span></button><a class="text-link" href="#journey">Start with the walkthrough →</a></div></div>
+      <div class="heading-row"><div><p class="eyebrow">PRIVATE NETWORK SERVICE PLATFORM</p><h1>Follow the request.<br><span>Understand the network.</span></h1><p class="intro">Explore how four Macs resolve a name, secure a connection,<br class="desktop-break"> and share the work. Then inspect the evidence behind each step.</p></div><div class="hero-actions"><button class="button primary" id="run-all">Run live checks <span>↗</span></button><button class="button secondary" id="btn-lan-mode" type="button">🌐 4-Mac LAN Mode</button><a class="text-link" href="#phase2">Jump to Phase 2 checks →</a></div></div>
       <div class="notice" id="notice" role="status">Loading network configuration…</div>
+      <form id="inline-ip-form" class="ip-bar">
+        <div class="ip-bar-head">
+          <div><span class="eyebrow" style="margin:0;">LIVE 4-LAPTOP IP TARGETS (EDIT ANYTIME IF WI-FI IPs CHANGE)</span></div>
+          <div class="ip-bar-actions">
+            <button type="submit" class="button primary" style="padding:7px 12px;">Save IPs</button>
+            <button type="button" id="inline-reset-lan" class="button secondary" style="padding:7px 12px;">Reset Defaults</button>
+            <button type="button" id="btn-local-mode" class="button secondary" style="padding:7px 12px;">1-Mac Local Test</button>
+          </div>
+        </div>
+        <div class="ip-bar-grid">
+          <label><span>Mac 1 · DNS (A)</span><input name="mac1" required value="10.7.17.94" pattern="(?:[0-9]{1,3}\.){3}[0-9]{1,3}"></label>
+          <label><span>Mac 2 · Edge (B)</span><input name="mac2" required value="10.7.3.128" pattern="(?:[0-9]{1,3}\.){3}[0-9]{1,3}"></label>
+          <label><span>Mac 3 · Back A / Standby (C)</span><input name="mac3" required value="10.7.6.84" pattern="(?:[0-9]{1,3}\.){3}[0-9]{1,3}"></label>
+          <label><span>Mac 4 · Back B / Backup DNS (D)</span><input name="mac4" required value="10.7.17.147" pattern="(?:[0-9]{1,3}\.){3}[0-9]{1,3}"></label>
+          <label><span>LAN Gateway</span><input name="gateway" required value="10.7.0.1" pattern="(?:[0-9]{1,3}\.){3}[0-9]{1,3}"></label>
+        </div>
+      </form>
       <div class="metrics"><div><span class="metric-caption">NETWORK DESIGN</span><strong>4 <small>machines</small></strong><span>DNS, edge and two backends</span></div><div><span class="metric-caption">LIVE VERIFICATION</span><strong id="verified-count">0 <small>/ 8 checks</small></strong><span id="audit-summary">No checks run this session</span></div><div><span class="metric-caption">SAVED EVIDENCE</span><strong id="file-count">— <small>files</small></strong><span id="evidence-summary">Reading repository evidence</span></div><div><span class="metric-caption">PRIVATE DOMAIN</span><strong class="domain">app.teamX.test</strong><span>HTTP :8080 · HTTPS :8443</span></div></div>
     </section>
 
@@ -44,6 +62,10 @@
             <button class="fail-btn btn-danger" id="btn-scen-fail-both" onclick="setScenario('fail-both')">🔴 Both Backends Down (502)</button>
             <button class="fail-btn btn-danger" id="btn-scen-fail-dns" onclick="setScenario('fail-dns')">DNS probe timeout</button>
             <button class="fail-btn btn-warning" id="btn-scen-fail-wrong-port" onclick="setScenario('fail-wrong-port')">🔌 Wrong Port (8444)</button>
+            <button class="fail-btn" id="btn-scen-ext-a" onclick="setScenario('ext-a')">🛡 Ext A: Backup DNS</button>
+            <button class="fail-btn" id="btn-scen-ext-b" onclick="setScenario('ext-b')">◷ Ext B: 30s TTL</button>
+            <button class="fail-btn" id="btn-scen-ext-c" onclick="setScenario('ext-c')">🔒 Ext C: pf Isolation</button>
+            <button class="fail-btn" id="btn-scen-ext-e" onclick="setScenario('ext-e')">⇄ Ext E: Standby Edge</button>
           </div>
         </div>
         <p id="scenario-scope" class="scenario-scope">Choose an explanation. Live faults require the separate Apply control.</p><button id="apply-fault" class="button secondary">Apply selected scenario to live lab</button><div class="diagram-scroll"><div class="flow-diagram" role="img" aria-label="Mac 1 client and DNS, Mac 2 Nginx edge, Mac 3 backend A, Mac 4 backend B connected by the request and response paths">
@@ -132,6 +154,21 @@
 
     <section id="failures"><div class="section-heading"><div><p class="eyebrow">WHEN SOMETHING BREAKS</p><h2>Find the failing layer.</h2><p class="muted">Play a labeled explanation, or use the separate Apply control to change the live lab. Verify the resulting behavior with live checks.</p></div><span class="tag neutral">Guided scenarios + explicit live controls</span></div><div class="failure-list" id="failure-list"></div></section>
 
+    <section id="phase2" class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">PHASE 2 · HARDEN, RECOVER &amp; TROUBLESHOOT</p>
+          <h2>Live Phase 2 verification (6/6).</h2>
+          <p class="muted">Tests backup DNS, 30s TTL records, pf service isolation, passive HA failover, standby edge TLS/LB, and 5-layer diagnostics directly on your Mac.</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="button primary" id="run-phase2-all" type="button">Run Phase 2 checks (6) ↗</button>
+          <button class="button secondary" type="button" onclick="viewPhase2Evidence()">View Phase 2 evidence ↗</button>
+        </div>
+      </div>
+      <div id="phase2-grid" class="check-grid"></div>
+    </section>
+
     <section id="evidence" class="panel">
       <div class="section-heading">
         <div>
@@ -157,10 +194,10 @@
       </div>
     </section>
 
-    <footer><span><strong>Network Lab</strong> · Phase 1</span><span>Understand it. Test it. Back it with evidence.</span></footer>
+    <footer><span><strong>Network Lab</strong> · Phase 1 &amp; 2</span><span>Understand it. Test it. Back it with evidence.</span></footer>
   </main>
 </div>
-<dialog id="config-dialog"><form id="config-form"><div class="dialog-head"><div><p class="eyebrow">NETWORK TARGETS</p><h2>Configure the lab</h2></div><button class="close" type="button" aria-label="Close configuration">×</button></div><p class="muted">These addresses control dashboard probes only. Update dnsmasq and Nginx separately. Values reset when the demo server restarts.</p><div id="config-fields"></div><p class="form-error" id="config-error" role="alert"></p><div class="dialog-actions"><button type="button" class="button secondary close-config">Cancel</button><button class="button primary" type="submit">Save targets</button></div></form></dialog>
+<dialog id="config-dialog"><form id="config-form"><div class="dialog-head"><div><p class="eyebrow">NETWORK TARGETS</p><h2>Configure the lab</h2></div><button class="close" type="button" aria-label="Close configuration">×</button></div><p class="muted">Switch between 1-Mac Local Mode (auto-starts local services on 127.0.0.1) and 4-Mac Team LAN Mode.</p><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;"><button type="button" class="button secondary" id="preset-local">🖥 1-Mac Local (127.0.0.1)</button><button type="button" class="button secondary" id="preset-lan">🌐 4-Mac LAN (10.7.x.x)</button></div><div id="config-fields"></div><p class="form-error" id="config-error" role="alert"></p><div class="dialog-actions"><button type="button" class="button secondary close-config">Cancel</button><button class="button primary" type="submit">Save targets</button></div></form></dialog>
 <dialog id="evidence-dialog"><div class="dialog-head"><div><p class="eyebrow">SAVED REPOSITORY EVIDENCE</p><h2 id="evidence-title">Evidence</h2></div><button class="close" type="button" aria-label="Close evidence">×</button></div><p class="muted" id="evidence-path"></p><pre id="evidence-output"></pre><a class="button secondary" id="evidence-download" target="_blank" rel="noopener">Open original ↗</a></dialog>
 </body>
 </html>

@@ -1,0 +1,22 @@
+# Extension E — Primary Edge vs Standby Edge Verification (Sun Nov 22 18:52:42 IST 2026)
+## Primary Edge (127.0.0.1:8443)
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Primary-Mac2
+HTTP/1.1 200 OK
+X-Backend: A
+X-Edge: Primary-Mac2
+
+## Standby Edge (127.0.0.1:8444)
+HTTP/1.1 200 OK
+X-Backend: A
+X-Edge: Standby-Mac3
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Standby-Mac3
+HTTP/1.1 200 OK
+X-Backend: A
+X-Edge: Standby-Mac3
+HTTP/1.1 200 OK
+X-Backend: B
+X-Edge: Standby-Mac3

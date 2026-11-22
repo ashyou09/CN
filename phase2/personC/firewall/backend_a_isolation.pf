@@ -1,0 +1,14 @@
+# phase2/personC/firewall/backend_a_isolation.pf
+# 4-Mac Service Isolation on Mac 3 (Person C - Backend A on port 3001)
+
+# Skip loopback so local Standby Edge -> 127.0.0.1:3001 and OS local traffic are unaffected
+set skip on lo0
+
+# Allow Mac 2 (Primary Edge) to reach Backend A (3001)
+pass in quick proto tcp from 10.7.3.128 to any port 3001
+
+# Allow Mac 3 (Standby Edge during Extension E) to reach Backend A (3001)
+pass in quick proto tcp from 10.7.6.84 to any port 3001
+
+# Block all other direct client access to Backend A (3001)
+block in quick proto tcp from any to any port 3001

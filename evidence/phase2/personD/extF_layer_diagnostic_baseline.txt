@@ -1,0 +1,33 @@
+# Extension F — 5-Layer Diagnostic Baseline (Sun Nov 22 18:52:42 IST 2026)
+## Layer 1: DNS Resolution
+app.teamX.test.		30	IN	A	127.0.0.1
+
+## Layer 2: Network / IP Reachability
+PING 127.0.0.1 (127.0.0.1): 56 data bytes
+64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.043 ms
+
+--- 127.0.0.1 ping statistics ---
+1 packets transmitted, 1 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 0.043/0.043/0.043/0.000 ms
+
+## Layer 3: Transport / TCP Port 8443
+Connection to 127.0.0.1 port 8443 [tcp/pcsync-https] succeeded!
+
+## Layer 4: TLS Handshake & CA Validation
+subject=C = IN, ST = Karnataka, L = Bengaluru, O = TeamX, OU = NetworkLab, CN = app.teamX.test
+issuer=C = IN, ST = Karnataka, L = Bengaluru, O = TeamX, OU = NetworkLab, CN = TeamX Local CA
+Verification: OK
+Verify return code: 0 (ok)
+
+## Layer 5: HTTP Edge & Upstream
+HTTP/1.1 200 OK
+Server: nginx/1.31.6
+Date: Sun, 22 Nov 2026 13:22:42 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 68
+Connection: keep-alive
+X-Powered-By: Express
+X-Backend: B
+ETag: "44-CAateMSo3iTx/Agi7YpzA/GIOsY"
+X-Edge: Primary-Mac2
+
