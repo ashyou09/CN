@@ -9,8 +9,9 @@ const HOST = '0.0.0.0'; // LAN-accessible (do NOT bind only to 127.0.0.1)
 // Enable standard ETag generation
 app.set('etag', 'strong');
 
-// Middleware: Set X-Backend header on every response
+// Middleware: Set X-Backend header & log incoming request for live terminal proof
 app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] Backend ${BACKEND_ID} <-- ${req.method} ${req.url} from ${req.socket.remoteAddress}`);
   res.setHeader('X-Backend', BACKEND_ID);
   next();
 });
