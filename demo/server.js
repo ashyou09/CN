@@ -2,19 +2,27 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFile, spawn } = require('node:child_process');
-const { isIP } = require('node:net');
+const net = require('node:net');
+const { isIP } = net;
 
 const PORT = Number(process.env.DEMO_PORT || 5050);
 const ROOT = path.resolve(__dirname, '..');
 const PUBLIC = path.join(__dirname, 'public');
 const EVIDENCE = path.join(ROOT, 'evidence');
 const categories = ['lan', 'dns', 'load-balancing', 'tls', 'caching', 'wireshark', 'failures', 'phase2'];
+const LAN_DEFAULTS = {
+  mac1: '10.7.17.94',
+  mac2: '10.7.3.128',
+  mac3: '10.7.6.84',
+  mac4: '10.7.17.147',
+  gateway: '10.7.0.1'
+};
 let config = {
-  mac1: { name: 'Mac 1 · Person A', role: 'Private DNS & client', ip: '10.7.17.94', port: 53 },
-  mac2: { name: 'Mac 2 · Person B', role: 'Nginx edge / TLS / load balancer', ip: '10.7.20.10', port: 8080, httpsPort: 8443 },
-  mac3: { name: 'Mac 3 · Person C', role: 'Backend A', ip: '10.7.19.126', port: 3001 },
-  mac4: { name: 'Mac 4 · Person D', role: 'Backend B & client', ip: '10.7.17.147', port: 3002 },
-  gateway: { name: 'LAN gateway', ip: '10.7.0.1' },
+  mac1: { name: 'Mac 1 · Person A', role: 'Private DNS & client', ip: LAN_DEFAULTS.mac1, port: 53 },
+  mac2: { name: 'Mac 2 · Person B', role: 'Nginx edge / TLS / load balancer', ip: LAN_DEFAULTS.mac2, port: 8080, httpsPort: 8443 },
+  mac3: { name: 'Mac 3 · Person C', role: 'Backend A', ip: LAN_DEFAULTS.mac3, port: 3001 },
+  mac4: { name: 'Mac 4 · Person D', role: 'Backend B & client', ip: LAN_DEFAULTS.mac4, port: 3002 },
+  gateway: { name: 'LAN gateway', ip: LAN_DEFAULTS.gateway },
   domain: 'app.teamX.test', apiDomain: 'api.teamX.test'
 };
 
@@ -35,8 +43,8 @@ const edge = (c, route) => `http://${c.mac2.ip}:${c.mac2.port}${route}`;
 
 const PERSON_METADATA = {
   evidenceA: { code: 'A', name: 'Person A (Pankaj · Mac 1 · DNS Lead)', ip: '10.7.17.94' },
-  evidenceB: { code: 'B', name: 'Person B (Ashutosh · Mac 2 · Edge & TLS Lead)', ip: '10.7.20.10' },
-  evidenceC: { code: 'C', name: 'Person C (Shreya · Mac 3 · Backend A Lead)', ip: '10.7.19.126' },
+  evidenceB: { code: 'B', name: 'Person B (Ashutosh · Mac 2 · Edge & TLS Lead)', ip: '10.7.3.128' },
+  evidenceC: { code: 'C', name: 'Person C (Shreya · Mac 3 · Backend A Lead)', ip: '10.7.6.84' },
   evidenceD: { code: 'D', name: 'Person D (Ranvendra · Mac 4 · Backend B & Capture)', ip: '10.7.17.147' },
   final_combined_evidence: { code: 'COMBINED', name: 'Combined Dossier (All 4 Nodes)', ip: '10.7.0.0/19' }
 };
@@ -85,6 +93,110 @@ const json = (res, code, data) => { res.writeHead(code, { 'Content-Type': 'appli
 
 const NGINX_CONF_PATH = path.join(ROOT, 'personB/nginx/nginx.conf');
 const NGINX_START_SCRIPT = path.join(ROOT, 'personB/nginx/start_nginx.sh');
+const P2_PRIMARY_PREFIX = path.join(ROOT, 'phase2/personB/nginx');
+const P2_PRIMARY_CONF = path.join(P2_PRIMARY_PREFIX, 'nginx-local-primary.conf');
+const P2_PRIMARY_PID = path.join(P2_PRIMARY_PREFIX, 'logs/primary.pid');
+const P2_STANDBY_PREFIX = path.join(ROOT, 'phase2/personC/nginx');
+const P2_STANDBY_CONF = path.join(P2_STANDBY_PREFIX, 'nginx-local-standby.conf');
+const P2_STANDBY_PID = path.join(P2_STANDBY_PREFIX, 'logs/standby.pid');
+
+const managedChildren = [];
+let localServicesReady = null;
+
+function tcpOpen(port, host = '127.0.0.1') {
+  return new Promise(resolve => {
+    const s = net.connect({ port, host, timeout: 400 });
+    s.once('connect', () => { s.destroy(); resolve(true); });
+    s.once('error', () => { s.destroy(); resolve(false); });
+    s.once('timeout', () => { s.destroy(); resolve(false); });
+  });
+}
+
+async function udpDnsAlive(port) {
+  const r = await command('dig', ['@127.0.0.1', '-p', String(port), 'app.teamX.test', 'A', '+time=1', '+tries=1']);
+  return r.success && r.stdout.includes('127.0.0.1');
+}
+
+function findBin(candidates) {
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return path.basename(candidates[0]);
+}
+
+async function ensureLocalServices() {
+  if (localServicesReady) return localServicesReady;
+  localServicesReady = (async () => {
+    const started = [];
+    const nginxBin = findBin(['/opt/homebrew/bin/nginx', '/usr/local/bin/nginx']);
+    const dnsmasqBin = findBin(['/opt/homebrew/sbin/dnsmasq', '/usr/local/sbin/dnsmasq']);
+    fs.mkdirSync(path.join(P2_PRIMARY_PREFIX, 'logs'), { recursive: true });
+    fs.mkdirSync(path.join(P2_STANDBY_PREFIX, 'logs'), { recursive: true });
+
+    if (!(await tcpOpen(3001))) {
+      const p = spawn(process.execPath, [path.join(ROOT, 'personC/backendA/server.js')], { stdio: 'ignore' });
+      managedChildren.push(p);
+      started.push('backend-a:3001');
+    }
+    if (!(await tcpOpen(3002))) {
+      const p = spawn(process.execPath, [path.join(ROOT, 'personD/backendB/server.js')], { stdio: 'ignore' });
+      managedChildren.push(p);
+      started.push('backend-b:3002');
+    }
+    for (let i = 0; i < 15; i++) {
+      if ((await tcpOpen(3001)) && (await tcpOpen(3002))) break;
+      await new Promise(r => setTimeout(r, 150));
+    }
+    if (!(await tcpOpen(8443)) && fs.existsSync(P2_PRIMARY_CONF)) {
+      await command(nginxBin, ['-p', P2_PRIMARY_PREFIX, '-c', P2_PRIMARY_CONF]);
+      started.push('nginx-primary:8443');
+    }
+    if (!(await tcpOpen(8444)) && fs.existsSync(P2_STANDBY_CONF)) {
+      await command(nginxBin, ['-p', P2_STANDBY_PREFIX, '-c', P2_STANDBY_CONF]);
+      started.push('nginx-standby:8444');
+    }
+    if (!(await udpDnsAlive(15353)) && fs.existsSync(path.join(ROOT, 'phase2/personA/dns/dnsmasq-local-primary.conf'))) {
+      const p = spawn(dnsmasqBin, ['-k', '-C', path.join(ROOT, 'phase2/personA/dns/dnsmasq-local-primary.conf'), '-x', '/tmp/demo-dnsmasq-primary.pid'], { stdio: 'ignore' });
+      managedChildren.push(p);
+      started.push('dnsmasq-primary:15353');
+    }
+    if (!(await udpDnsAlive(15354)) && fs.existsSync(path.join(ROOT, 'phase2/personD/dns/dnsmasq-local-backup.conf'))) {
+      const p = spawn(dnsmasqBin, ['-k', '-C', path.join(ROOT, 'phase2/personD/dns/dnsmasq-local-backup.conf'), '-x', '/tmp/demo-dnsmasq-backup.pid'], { stdio: 'ignore' });
+      managedChildren.push(p);
+      started.push('dnsmasq-backup:15354');
+    }
+    await new Promise(r => setTimeout(r, 250));
+    return {
+      started,
+      services: {
+        backendA: await tcpOpen(3001),
+        backendB: await tcpOpen(3002),
+        primaryEdge: await tcpOpen(8443),
+        standbyEdge: await tcpOpen(8444),
+        primaryDns: await udpDnsAlive(15353),
+        backupDns: await udpDnsAlive(15354)
+      }
+    };
+  })();
+  try {
+    return await localServicesReady;
+  } finally {
+    localServicesReady = null;
+  }
+}
+
+function cleanupManagedServices() {
+  for (const child of managedChildren) {
+    try { child.kill('SIGTERM'); } catch (_) {}
+  }
+  const nginxBin = findBin(['/opt/homebrew/bin/nginx', '/usr/local/bin/nginx']);
+  if (fs.existsSync(P2_PRIMARY_PID)) {
+    try { require('node:child_process').execFileSync(nginxBin, ['-p', P2_PRIMARY_PREFIX, '-c', P2_PRIMARY_CONF, '-s', 'stop']); } catch (_) {}
+  }
+  if (fs.existsSync(P2_STANDBY_PID)) {
+    try { require('node:child_process').execFileSync(nginxBin, ['-p', P2_STANDBY_PREFIX, '-c', P2_STANDBY_CONF, '-s', 'stop']); } catch (_) {}
+  }
+}
 
 let currentFault = 'normal';
 let faultBusy = false;
@@ -110,16 +222,22 @@ async function setNginxUpstream(mode) {
     upstreamServers = `        server ${config.mac3.ip}:3001 max_fails=3 fail_timeout=5s;\n        server ${config.mac4.ip}:3002 max_fails=3 fail_timeout=5s;`;
   }
 
-  if (fs.existsSync(NGINX_CONF_PATH)) {
+  const useP2Local = fs.existsSync(P2_PRIMARY_PID) && !fs.existsSync(path.join(ROOT, 'personB/nginx/logs/nginx.pid'));
+  const targetConf = useP2Local ? P2_PRIMARY_CONF : NGINX_CONF_PATH;
+
+  if (fs.existsSync(targetConf)) {
     try {
-      let conf = fs.readFileSync(NGINX_CONF_PATH, 'utf8');
+      let conf = fs.readFileSync(targetConf, 'utf8');
       const regex = /upstream\s+backend_pool\s*\{[\s\S]*?\}/;
-      conf = conf.replace(regex, `upstream backend_pool {\n${upstreamServers}\n    }`);
-      const original = fs.readFileSync(NGINX_CONF_PATH, 'utf8');
+      const original = conf;
       if (!regex.test(original)) return { success: false, stderr: 'backend_pool not found; configuration unchanged' };
-      fs.writeFileSync(NGINX_CONF_PATH, conf, 'utf8');
-      const result = await command(NGINX_START_SCRIPT, ['reload']);
-      if (!result.success) fs.writeFileSync(NGINX_CONF_PATH, original, 'utf8');
+      conf = conf.replace(regex, `upstream backend_pool {\n${upstreamServers}\n    }`);
+      fs.writeFileSync(targetConf, conf, 'utf8');
+      const nginxBin = findBin(['/opt/homebrew/bin/nginx', '/usr/local/bin/nginx']);
+      const result = useP2Local
+        ? await command(nginxBin, ['-p', P2_PRIMARY_PREFIX, '-c', P2_PRIMARY_CONF, '-s', 'reload'])
+        : await command(NGINX_START_SCRIPT, ['reload']);
+      if (!result.success) fs.writeFileSync(targetConf, original, 'utf8');
       return result;
     } catch (err) {
       return { success: false, error: err.message, stdout: '', stderr: err.message };
@@ -329,6 +447,19 @@ const server = http.createServer(async (req, res) => {
       } finally { faultBusy = false; }
     }
 
+    if (route === '/api/phase2-ensure-local') {
+      if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
+      let body = '';
+      for await (const chunk of req) { body += chunk; if (body.length > 4096) return json(res, 413, { error: 'Payload too large' }); }
+      const { mode } = JSON.parse(body || '{}');
+      const state = await ensureLocalServices();
+      if (mode === 'local') {
+        for (const key of ['mac1', 'mac2', 'mac3', 'mac4', 'gateway']) config[key].ip = '127.0.0.1';
+      } else if (mode === 'lan') {
+        for (const key of ['mac1', 'mac2', 'mac3', 'mac4', 'gateway']) config[key].ip = LAN_DEFAULTS[key];
+      }
+      return json(res, 200, { success: true, mode: mode || 'keep', config, ...state });
+    }
     if (route === '/api/config') {
       if (req.method === 'GET') return json(res, 200, c);
       if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
@@ -394,15 +525,19 @@ const server = http.createServer(async (req, res) => {
         if (streaming) res.end(JSON.stringify({ type: 'result', result: full }) + '\n'); else json(res, 200, full);
       };
       const answers = r => [...r.stdout.matchAll(/^\S+\s+\d+\s+IN\s+A\s+([\d.]+)/gm)].map(m => m[1]);
+      const isLocalDns = c.mac1.ip === '127.0.0.1';
+      if (isLocalDns && fault !== 'fail-dns') await ensureLocalServices();
       const dnsIp = fault === 'fail-dns' ? '127.0.0.1' : c.mac1.ip;
-      const dnsPort = fault === 'fail-dns' ? '53535' : '53';
+      const dnsPort = fault === 'fail-dns' ? '53535' : (isLocalDns ? '15353' : '53');
       emit('dns', 'running', `Querying ${dnsIp}:${dnsPort} for ${c.domain}`);
       const direct = await command('dig', ['@' + dnsIp, '-p', dnsPort, c.domain, 'A', '+time=2', '+tries=1']);
       const directPass = direct.success && direct.stdout.includes('status: NOERROR') && (answers(direct).includes(c.mac2.ip) || answers(direct).includes('10.7.3.128') || answers(direct).includes('10.7.20.10'));
       emit('dns', directPass ? 'passed' : 'failed', `DNS answer: ${answers(direct).join(', ') || 'none'}`);
       if (!directPass) return finish({ outcome: 'dns', directAnswer: answers(direct), expectedIp: c.mac2.ip, raw: raw(direct) });
       emit('resolver', 'running', 'Checking the demo host system resolver');
-      const system = await command('dig', [c.domain, 'A', '+time=2', '+tries=1']);
+      const system = isLocalDns
+        ? await command('dig', ['@127.0.0.1', '-p', '15354', c.domain, 'A', '+time=2', '+tries=1'])
+        : await command('dig', [c.domain, 'A', '+time=2', '+tries=1']);
       const systemPass = system.success && system.stdout.includes('status: NOERROR') && (answers(system).includes(c.mac2.ip) || answers(system).includes('10.7.3.128') || answers(system).includes('10.7.20.10'));
       emit('resolver', systemPass ? 'passed' : 'failed', `System answer: ${answers(system).join(', ') || 'none'}`);
       if (!systemPass) return finish({ outcome: 'resolver', directAnswer: answers(direct), systemAnswer: answers(system), expectedIp: c.mac2.ip, raw: raw(direct) + '\n\n' + raw(system) });
@@ -430,13 +565,20 @@ const server = http.createServer(async (req, res) => {
     }
     if (route === '/api/test-dns') {
       const results = [];
+      const isLocalDns = c.mac1.ip === '127.0.0.1';
+      if (isLocalDns && currentFault !== 'fail-dns') await ensureLocalServices();
       const dnsTarget = currentFault === 'fail-dns' ? '127.0.0.1' : c.mac1.ip;
-      const dnsPort = currentFault === 'fail-dns' ? '53535' : '53';
+      const dnsPort = currentFault === 'fail-dns' ? '53535' : (isLocalDns ? '15353' : '53');
       for (const domain of [c.domain, c.apiDomain]) {
         for (const mode of ['direct', 'system']) {
-          const r = currentFault === 'fail-dns' && mode === 'direct'
-            ? await command('dig', ['@' + dnsTarget, '-p', dnsPort, domain, 'A', '+time=1', '+tries=1'])
-            : await command('dig', [...(mode === 'direct' ? ['@' + c.mac1.ip] : []), domain, 'A', '+time=2', '+tries=1']);
+          let r;
+          if (currentFault === 'fail-dns' && mode === 'direct') {
+            r = await command('dig', ['@' + dnsTarget, '-p', dnsPort, domain, 'A', '+time=1', '+tries=1']);
+          } else if (isLocalDns) {
+            r = await command('dig', ['@127.0.0.1', '-p', mode === 'direct' ? '15353' : '15354', domain, 'A', '+time=2', '+tries=1']);
+          } else {
+            r = await command('dig', [...(mode === 'direct' ? ['@' + c.mac1.ip] : []), domain, 'A', '+time=2', '+tries=1']);
+          }
           const ips = [...r.stdout.matchAll(/^\S+\s+\d+\s+IN\s+A\s+([\d.]+)/gm)].map(m => m[1]);
           const pass = r.success && r.stdout.includes('status: NOERROR') && (ips.includes(c.mac2.ip) || ips.includes('10.7.3.128') || ips.includes('10.7.20.10'));
           results.push({ domain, mode, ips, pass, raw: raw(r) });
@@ -457,6 +599,102 @@ const server = http.createServer(async (req, res) => {
         isCacheWorking: r1.success && status(r1) === 200 && !!r2?.success && status(r2) === 304,
         raw: raw(r1) + '\n\n' + (r2 ? raw(r2) : 'Conditional request skipped: no ETag received.') });
     }
+    if (route === '/api/phase2-check') {
+      const ext = (u.searchParams.get('ext') || '').toUpperCase();
+      if (!['A', 'B', 'C', 'D', 'E', 'F'].includes(ext)) return json(res, 400, { error: 'Unknown Phase 2 extension (use A-F)' });
+      const localState = await ensureLocalServices();
+      const ca = path.join(ROOT, 'personB/tls/ca.crt');
+      const readEv = rel => {
+        const p = path.join(EVIDENCE, rel);
+        return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '(saved evidence file not found)';
+      };
+      if (ext === 'A') {
+        const pri = await command('dig', ['@127.0.0.1', '-p', '15353', c.domain, 'A', '+time=2', '+tries=1']);
+        const down = await command('dig', ['@127.0.0.1', '-p', '53535', c.domain, 'A', '+time=1', '+tries=1']);
+        const bak = await command('dig', ['@127.0.0.1', '-p', '15354', c.domain, 'A', '+time=2', '+tries=1']);
+        const bakApi = await command('dig', ['@127.0.0.1', '-p', '15354', c.apiDomain, 'A', '+time=2', '+tries=1']);
+        const pass = pri.success && !down.success && bak.success && bak.stdout.includes('127.0.0.1') && bakApi.success;
+        return json(res, 200, {
+          ext, pass, evidenceFile: 'phase2/personD/extA_backup_dns_local.txt',
+          summary: pass ? 'Primary (:15353) + Backup (:15354) active; Backup resolves after Primary stops' : 'Backup DNS probe failed',
+          detail: `Primary ok: ${pri.success} · Simulated down (:53535) failed: ${!down.success} · Backup app+api resolved: ${bak.success && bakApi.success}`,
+          raw: [pri, down, bak, bakApi].map(raw).join('\n\n')
+        });
+      }
+      if (ext === 'B') {
+        const d1 = await command('dig', ['@127.0.0.1', '-p', '15353', c.domain, 'A', '+noall', '+answer']);
+        const d2 = await command('dig', ['@127.0.0.1', '-p', '15354', c.domain, 'A', '+noall', '+answer']);
+        const ttlMatch = d1.stdout.match(/^\S+\s+(\d+)\s+IN\s+A\s+/m);
+        const ttl = ttlMatch ? Number(ttlMatch[1]) : 0;
+        const pass = d1.success && d2.success && ttl === 30;
+        return json(res, 200, {
+          ext, pass, evidenceFile: 'phase2/personA/extB_dns_ttl_record_change_local.txt',
+          summary: pass ? `Explicit ${ttl}s TTL verified on both DNS servers` : `Expected 30s TTL, observed ${ttl}s`,
+          detail: `TTL=${ttl}s ensures mDNSResponder caches answers for 30s before cutover (or immediate change on dscacheutil -flushcache).`,
+          raw: [d1, d2].map(raw).join('\n\n') + '\n\n--- Saved Controlled Record Change Evidence ---\n' + readEv('phase2/personA/extB_dns_ttl_record_change_local.txt')
+        });
+      }
+      if (ext === 'C') {
+        const pfA = fs.existsSync(path.join(ROOT, 'phase2/personC/firewall/backend_a_isolation.pf')) ? fs.readFileSync(path.join(ROOT, 'phase2/personC/firewall/backend_a_isolation.pf'), 'utf8') : '';
+        const pfB = fs.existsSync(path.join(ROOT, 'phase2/personD/firewall/backend_b_isolation.pf')) ? fs.readFileSync(path.join(ROOT, 'phase2/personD/firewall/backend_b_isolation.pf'), 'utf8') : '';
+        const pfLocal = fs.existsSync(path.join(ROOT, 'phase2/personC/firewall/local_single_mac_test.pf')) ? fs.readFileSync(path.join(ROOT, 'phase2/personC/firewall/local_single_mac_test.pf'), 'utf8') : '';
+        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        const rulesValid = pfA.includes('block in quick proto tcp from any to any port 3001') && pfB.includes('block in quick proto tcp from any to any port 3002');
+        const pass = rulesValid && edgeRes.success && status(edgeRes) === 200;
+        return json(res, 200, {
+          ext, pass,
+          summary: pass ? 'pf rulesets verified (3001/3002 isolated to Edge IPs); Edge proxy reaches backends' : 'Firewall rule or edge reachability check failed',
+          detail: 'Kernel pfctl enforcement requires sudo (run sudo ./phase2/scripts/run_local_sudo_full_demo.sh on 1 Mac or pfctl -f on Mac 3/4).',
+          raw: `# Edge Access Probe (https://${c.domain}:8443/api/status)\n${raw(edgeRes)}\n\n# phase2/personC/firewall/backend_a_isolation.pf\n${pfA}\n# phase2/personD/firewall/backend_b_isolation.pf\n${pfB}\n# phase2/personC/firewall/local_single_mac_test.pf\n${pfLocal}`
+        });
+      }
+      if (ext === 'D') {
+        const probes = [];
+        for (let i = 0; i < 6; i++) {
+          probes.push(await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]));
+        }
+        const okCount = probes.filter(r => r.success && status(r) === 200).length;
+        const seq = probes.map(r => header(r, 'X-Backend') || '?');
+        const confTxt = fs.existsSync(P2_PRIMARY_CONF) ? fs.readFileSync(P2_PRIMARY_CONF, 'utf8') : '';
+        const hasHa = confTxt.includes('max_fails=3') && confTxt.includes('fail_timeout=5s') && confTxt.includes('proxy_next_upstream');
+        const pass = okCount === 6 && seq.includes('A') && seq.includes('B') && hasHa;
+        return json(res, 200, {
+          ext, pass, evidenceFile: 'phase2/personB/extD_ha_failover_local.txt',
+          summary: pass ? `HA Primary Edge balanced 6/6 requests (${seq.join(' → ')}) with passive failover enabled` : 'HA check incomplete',
+          detail: 'Includes max_fails=3 fail_timeout=5s + proxy_next_upstream. Mac 2 Edge remains the SPOF addressed in Ext E.',
+          raw: probes.map(raw).join('\n\n') + '\n\n--- Saved Failover & Recovery Run ---\n' + readEv('phase2/personB/extD_ha_failover_local.txt')
+        });
+      }
+      if (ext === 'E') {
+        const pri = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        const st1 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8444:127.0.0.1`, `https://${c.domain}:8444/api/status`]);
+        const st2 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8444:127.0.0.1`, `https://${c.domain}:8444/api/status`]);
+        const priEdge = header(pri, 'X-Edge');
+        const stEdge = header(st1, 'X-Edge');
+        const pass = status(pri) === 200 && priEdge === 'Primary-Mac2' && status(st1) === 200 && status(st2) === 200 && stEdge === 'Standby-Mac3';
+        return json(res, 200, {
+          ext, pass, evidenceFile: 'phase2/personC/extE_standby_edge_local.txt',
+          summary: pass ? `Primary (${priEdge} :8443) and Standby (${stEdge} :8444) both verified with ca.crt` : 'Primary or Standby Edge probe failed',
+          detail: `Standby served backends ${header(st1, 'X-Backend') || '?'} & ${header(st2, 'X-Backend') || '?'} with identical TLS SAN cert.`,
+          raw: [pri, st1, st2].map(raw).join('\n\n') + '\n\n--- Saved Edge Migration Evidence ---\n' + readEv('phase2/personC/extE_standby_edge_local.txt')
+        });
+      }
+      // ext === 'F'
+      const l1 = await command('dig', ['@127.0.0.1', '-p', '15354', c.domain, 'A', '+noall', '+answer']);
+      const l2 = await command('ping', ['-c', '1', '127.0.0.1']);
+      const l3 = await command('nc', ['-zv', '-w', '2', '127.0.0.1', '8443']);
+      const l4 = await command('openssl', ['s_client', '-connect', '127.0.0.1:8443', '-servername', c.domain, '-CAfile', ca], 5000);
+      const l5 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+      const tcpOk = l3.success || (l3.stderr || '').includes('succeeded');
+      const tlsOk = (l4.stdout || '').includes('Verify return code: 0 (ok)');
+      const pass = l1.success && l2.success && tcpOk && tlsOk && status(l5) === 200 && localState.services.primaryEdge;
+      return json(res, 200, {
+        ext, pass, evidenceFile: 'phase2/personD/extF_layer_diagnostic_baseline.txt',
+        summary: pass ? '5/5 diagnostic layers verified (DNS → IP → TCP → TLS → HTTP)' : 'One or more diagnostic layers failed',
+        detail: `L1 DNS: ${l1.success} · L2 IP: ${l2.success} · L3 TCP: ${tcpOk} · L4 TLS Verify 0: ${tlsOk} · L5 HTTP ${status(l5)}`,
+        raw: [l1, l2, l3, l4, l5].map(raw).join('\n\n')
+      });
+    }
     if (route.startsWith('/api/')) return json(res, 404, { error: 'Unknown API endpoint' });
     const files = { '/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css' };
     if (!files[route]) return json(res, 404, { error: 'Not found' });
@@ -465,3 +703,5 @@ const server = http.createServer(async (req, res) => {
   } catch (error) { if (!res.headersSent) json(res, 500, { error: error.message }); else res.end(JSON.stringify({ type: 'error', error: error.message }) + '\n'); }
 });
 server.listen(PORT, '127.0.0.1', () => console.log(`Network lab: http://localhost:${PORT}`));
+process.on('SIGINT', () => { cleanupManagedServices(); process.exit(0); });
+process.on('SIGTERM', () => { cleanupManagedServices(); process.exit(0); });

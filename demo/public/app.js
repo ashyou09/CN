@@ -18,8 +18,25 @@ const failures = [
   ['Backend A stops (Failover to B)', 'fail-a', 'Nginx detects A down and routes 100% of traffic to Backend B.', 'Restart Backend A on Mac 3; traffic returns to round-robin.'],
   ['Backend B stops (Failover to A)', 'fail-b', 'Nginx detects B down and routes 100% of traffic to Backend A.', 'Restart Backend B on Mac 4; traffic returns to round-robin.'],
   ['Both backends stop (502 Bad Gateway)', 'fail-both', 'Edge proxy is reachable but returns HTTP 502 Bad Gateway.', 'Restart both Node processes on Mac 3 and Mac 4.'],
-  ['Wrong destination port (8444)', 'fail-wrong-port', 'Address resolves and ping works; TCP connection is refused.', 'Connect to the configured edge port 8443.']
+  ['Wrong destination port (8444)', 'fail-wrong-port', 'Address resolves and ping works; TCP connection is refused.', 'Connect to the configured edge port 8443.'],
+  ['Ext A · Backup DNS Failover', 'ext-a', 'Primary DNS on Mac 1 stops, so clients automatically query Backup DNS on Mac 4.', 'Restart primary dnsmasq on Mac 1; both DNS servers stay synchronized.'],
+  ['Ext B · 30s DNS TTL & Cache Flush', 'ext-b', 'OS resolver caches the old IP for 30s until TTL expires or dscacheutil -flushcache runs.', 'Lower TTL ahead of planned migrations and flush local cache for instant switch.'],
+  ['Ext C · pf Backend Firewall Isolation', 'ext-c', 'Direct client calls to :3001/:3002 time out while Edge Nginx passes cleanly.', 'Load pf rules on Mac 3/4 and roll back with sudo pfctl -f /etc/pf.conf after demo.'],
+  ['Ext E · Controlled Standby Edge Cutover', 'ext-e', 'DNS shifts app.teamX.test from Primary-Mac2 to Standby-Mac3 without replacing hardware.', 'Restore A record to Mac 2 IP once standby test concludes.']
 ];
+
+const phase2Checks = [
+  { ext:'A', title:'Backup DNS resolver', icon:'◎', owner:'EXTENSION A · PERSON D / A', desc:'Verifies Primary (:15353) + Backup (:15354) dnsmasq and shows Backup continues resolving when Primary stops.', rule:'phase2/personD/dns/', caveat:'Runs live dig probes against local Primary & Backup dnsmasq.' },
+  { ext:'B', title:'DNS TTL (30s) & record change', icon:'◷', owner:'EXTENSION B · PERSON A', desc:'Confirms explicit 30-second TTL in dig answers and includes controlled IP cutover proof.', rule:'phase2/personA/dns/', caveat:'OS mDNSResponder port-53 flush is included in run_local_sudo_full_demo.sh.' },
+  { ext:'C', title:'pf service isolation', icon:'🛡', owner:'EXTENSION C · PERSON C / D', desc:'Validates backend_a_isolation.pf & backend_b_isolation.pf rules and confirms Edge proxy reaches backends.', rule:'phase2/personC|D/firewall/', caveat:'Kernel pfctl enforcement requires sudo (run_local_sudo_full_demo.sh or Mac 3/4).' },
+  { ext:'D', title:'HA failover & SPOF analysis', icon:'⇉', owner:'EXTENSION D · PERSON B', desc:'Probes Primary Edge (:8443) 6 times, checks passive health directives, and attaches live failover/recovery trace.', rule:'phase2/personB/nginx/', caveat:'Mac 2 Nginx remains the SPOF until paired with Ext E Standby Edge.' },
+  { ext:'E', title:'Standby edge TLS & LB', icon:'⇄', owner:'EXTENSION E · PERSON C / A', desc:'Tests BOTH Primary (:8443, X-Edge: Primary-Mac2) and Standby (:8444, X-Edge: Standby-Mac3) with ca.crt.', rule:'phase2/personC/nginx/', caveat:'Both edges share the SAN certificate and balance across Backends A & B.' },
+  { ext:'F', title:'5-layer troubleshooting baseline', icon:'⚡', owner:'EXTENSION F · ALL MEMBERS', desc:'Executes live bottom-up verification across Layer 7 DNS → L3 IP → L4 TCP → TLS → L7 HTTP.', rule:'PHASE2_HANDOVER.md', caveat:'Follow this exact 5-step order out loud during faculty fault injection.' }
+];
+
+let phase2State = {};
+const pendingPhase2 = new Set();
+let phase2AuditBusy = false;
 
 let config, files = [], filter = 'all', selectedPerson = 'all', runState = {}, logState = {}, checkedAt = {}, flowBusy = false;
 let currentScenario = 'normal', liveFault = 'normal';
@@ -111,11 +128,17 @@ function flowBusyState(busy) {
   if (!busy) $('#apply-fault').disabled = currentScenario === 'fail-wrong-ip';
 }
 
+const LIVE_SCENARIOS = ['normal', 'fail-a', 'fail-b', 'fail-both', 'fail-dns', 'fail-wrong-port'];
+
 function setScenario(scenario) {
   if (flowBusy) return;
   currentScenario = scenario;
   document.querySelectorAll('.fail-btn').forEach(b => b.classList.toggle('active', b.id === `btn-scen-${scenario}`));
-  $('#apply-fault').disabled = scenario === 'fail-wrong-ip';
+  const applyBtn = $('#apply-fault');
+  if (applyBtn) {
+    applyBtn.disabled = !LIVE_SCENARIOS.includes(scenario);
+    applyBtn.textContent = LIVE_SCENARIOS.includes(scenario) ? 'Apply selected scenario to live lab' : 'Guided Phase 2 illustration (use Phase 2 checks below)';
+  }
   $('#scenario-scope').textContent = 'Selected explanation: ' + scenario + '. Live lab state: ' + liveFault + '.';
   playFlow(false);
 }
@@ -190,6 +213,29 @@ async function playFlow(live = false) {
       }
     }
     const illustration = 'Illustration only. Use live checks for measured evidence.';
+    if (!live && currentScenario === 'ext-a') {
+      await flowLeg(0,'route-dns',false,['client','dns'],'Ext A · Primary DNS down','Mac 1 dnsmasq stops responding on port 53.',illustration);
+      await flowLeg(1,'route-dns',true,['b','client'],'Ext A · Backup DNS answers','Client falls back to Backup dnsmasq on Mac 4 and resolves app.teamX.test.',illustration);
+      await flowLeg(2,'route-edge',false,['client','edge'],'Ext A · HTTPS continues','Service stays reachable via Primary Edge despite Mac 1 DNS outage.',illustration);
+      flowStep(6,[]); return;
+    }
+    if (!live && currentScenario === 'ext-b') {
+      await flowLeg(0,'route-dns',false,['client','dns'],'Ext B · Initial lookup (TTL 30s)','OS resolver caches the returned Edge IP for 30 seconds.',illustration);
+      await flowLeg(1,'route-dns',true,['dns','client'],'Ext B · Record updated','Even after DNS changes, client reuses cached IP until 30s expires or dscacheutil -flushcache runs.',illustration);
+      flowStep(6,[]); return;
+    }
+    if (!live && currentScenario === 'ext-c') {
+      await flowLeg(2,'route-edge',false,['client','edge'],'Ext C · Client hits Edge only','pf rules on Mac 3/4 drop direct client access to :3001/:3002.',illustration);
+      await flowLeg(3,'route-a',false,['edge','a'],'Ext C · Edge allowed by pf','Mac 2 Edge IP passes pf rule and reaches Backend A.',illustration);
+      await flowLeg(4,'route-a',true,['a','edge'],'Ext C · Response via Edge','All traffic is forced through TLS termination & load balancing.',illustration);
+      flowStep(6,[]); return;
+    }
+    if (!live && currentScenario === 'ext-e') {
+      await flowLeg(0,'route-dns',false,['client','dns'],'Ext E · DNS cutover (TTL 30s)','Person A updates app.teamX.test to Standby Edge Mac 3 IP.',illustration);
+      await flowLeg(2,'route-a',false,['client','a'],'Ext E · Traffic moves to Standby Edge','New lookups route to Standby Nginx on Mac 3 (X-Edge: Standby-Mac3) with valid TLS.',illustration);
+      await flowLeg(4,'route-b',true,['b','client'],'Ext E · Backends still balanced','Standby Edge distributes requests across Backends A and B.',illustration);
+      flowStep(6,[]); return;
+    }
     await flowLeg(0,'route-dns',false,['client','dns'],'01 · DNS query',live?'The demo host queried the private resolver.':'The client queries Person A’s DNS resolver.',live?`Observed from ${result.probeHost}.`:illustration);
     if (!live && currentScenario === 'fail-dns') {
       flowStatus('Illustrated DNS failure','A resolver timeout prevents the client from obtaining the edge address.','A timeout is different from NXDOMAIN. The live DNS fault redirects probes; it does not stop dnsmasq.');return;
@@ -503,9 +549,91 @@ function showEvidence(file) {
   }
 }
 
+function renderPhase2Checks() {
+  const grid = $('#phase2-grid');
+  if (!grid) return;
+  grid.innerHTML = phase2Checks.map(c => {
+    const r = phase2State[c.ext];
+    const busy = pendingPhase2.has(c.ext) || phase2AuditBusy;
+    return `<article class="check-card" id="p2-check-${c.ext}">
+      <div class="check-top">
+        <span class="check-icon">${c.icon}</span>
+        <span class="check-state ${r?.pass ? 'pass' : r ? 'fail' : ''}">${r ? (r.pass ? 'Verified' : 'Needs attention') : 'Not run'}</span>
+      </div>
+      <div class="check-number">${c.owner}</div>
+      <h3>${c.title}</h3>
+      <p class="check-desc">${c.desc}</p>
+      <div class="check-rule"><span>CONFIG</span><strong>${c.rule}</strong></div>
+      ${r ? `<div class="result ${r.pass ? 'pass' : 'fail'}">
+        <strong>${escapeHtml(r.summary)}</strong>
+        <p>${escapeHtml(r.detail)}</p>
+      </div>` : ''}
+      <p class="check-caveat">${c.caveat}</p>
+      <div class="check-actions">
+        <button class="button ${r ? 'secondary' : 'primary'} run-p2-check" data-p2="${c.ext}" ${busy ? 'disabled' : ''}>${pendingPhase2.has(c.ext) ? 'Checking…' : r ? 'Run again' : 'Run check'} ↗</button>
+        ${r ? `<details><summary>View command output</summary><pre>${escapeHtml(r.raw || 'No output')}</pre></details>` : ''}
+      </div>
+    </article>`;
+  }).join('');
+}
+
+async function runPhase2Check(ext) {
+  if (pendingPhase2.has(ext)) return;
+  pendingPhase2.add(ext);
+  renderPhase2Checks();
+  try {
+    const res = await api(`/api/phase2-check?ext=${ext}`);
+    phase2State[ext] = res;
+    return res;
+  } catch (e) {
+    phase2State[ext] = { ext, pass: false, summary: 'Check could not run', detail: e.message, raw: e.stack || e.message };
+    return phase2State[ext];
+  } finally {
+    pendingPhase2.delete(ext);
+    renderPhase2Checks();
+  }
+}
+
+async function runAllPhase2() {
+  if (phase2AuditBusy || pendingPhase2.size) return;
+  phase2AuditBusy = true;
+  const btn = $('#run-phase2-all');
+  const orig = btn ? btn.textContent : '';
+  renderPhase2Checks();
+  try {
+    for (const [i, c] of phase2Checks.entries()) {
+      if (btn) { btn.disabled = true; btn.textContent = `Running Ext ${c.ext} (${i + 1}/6)…`; }
+      await runPhase2Check(c.ext);
+    }
+  } finally {
+    phase2AuditBusy = false;
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+    renderPhase2Checks();
+  }
+  const passed = Object.values(phase2State).filter(x => x.pass).length;
+  setNotice(`Phase 2 verification: ${passed} of 6 extensions verified locally.`, passed === 6 ? 'success' : 'warn');
+}
+
+async function switchLabMode(mode) {
+  setNotice(mode === 'local' ? 'Starting local services (3001, 3002, 8443, 8444, 15353, 15354) and switching targets to 127.0.0.1…' : 'Switching probe targets back to 4-Mac Team LAN IPs (10.7.x.x)…', 'info');
+  try {
+    const res = await apiPost('/api/phase2-ensure-local', { mode });
+    config = res.config;
+    renderConfig();
+    runState = {}; logState = {}; renderChecks();
+    if ($('#config-dialog')?.open) $('#config-dialog').close();
+    setNotice(mode === 'local'
+      ? `1-Mac Local Mode active (127.0.0.1). All 6 local services ready${res.started?.length ? ` (started: ${res.started.join(', ')})` : ''}. You can run all 8 Phase 1 + 6 Phase 2 checks now!`
+      : '4-Mac Team LAN Mode active (10.7.x.x). Make sure all 4 laptops are reachable on Wi-Fi.', 'success');
+  } catch (err) {
+    setNotice('Could not switch lab mode: ' + err.message, 'warn');
+  }
+}
+
 function setup() {
   flowStep(-1);
   renderChecks();
+  renderPhase2Checks();
   $('#failure-list').innerHTML = failures.map((f, i) =>
     `<details class="failure-item">
       <summary><span class="failure-num">0${i + 1}</span><strong>${f[0]}</strong><span>+</span></summary>
@@ -528,6 +656,14 @@ function setup() {
     if (b) runCheck(b.dataset.check);
   });
   $('#run-all').addEventListener('click', runAll);
+  $('#run-phase2-all')?.addEventListener('click', runAllPhase2);
+  $('#phase2-grid')?.addEventListener('click', e => {
+    const b = e.target.closest('[data-p2]');
+    if (b) runPhase2Check(b.dataset.p2);
+  });
+  $('#btn-local-mode')?.addEventListener('click', () => switchLabMode('local'));
+  $('#preset-local')?.addEventListener('click', () => switchLabMode('local'));
+  $('#preset-lan')?.addEventListener('click', () => switchLabMode('lan'));
   $('#refresh-evidence').addEventListener('click', loadEvidence);
   $('#persona-filters')?.addEventListener('click', e => {
     const b = e.target.closest('[data-person]');

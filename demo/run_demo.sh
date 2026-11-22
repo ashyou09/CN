@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# run_demo.sh - 1-Click Launch for CN Demonstration Dashboard
+# run_demo.sh - 1-Click Launch for CN Phase 1 & Phase 2 Live Demonstration Dashboard
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$DIR/.." && pwd)"
 PORT=5050
 
 echo "=========================================================="
-echo "🚀 Launching CN Phase 1 Live Demonstration Dashboard..."
+echo "🚀 Launching CN Phase 1 & 2 Live Demonstration Dashboard..."
 echo "=========================================================="
 
 # Do not terminate another process that happens to own the demo port.
@@ -15,7 +16,7 @@ if lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
     exit 1
 fi
 
-# Start the demo server
+# Start the demo server (Phase 2 checks and 1-Mac Local Mode auto-start local services on demand)
 echo "Starting Node.js server on port $PORT..."
 node "$DIR/server.js" &
 SERVER_PID=$!
@@ -29,6 +30,8 @@ open "http://localhost:$PORT"
 echo ""
 echo "=========================================================="
 echo "✅ Dashboard is running at: http://localhost:$PORT"
+echo "💡 Tip: Click '🖥 1-Mac Local Mode' in the header to auto-start"
+echo "   Backends A/B, Primary/Standby Nginx, and Primary/Backup DNS."
 echo "Press Ctrl+C to stop the demo server."
 echo "=========================================================="
 
