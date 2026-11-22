@@ -1,39 +1,96 @@
-# Person A — Mac 1 (Private DNS Server + Test Client)
-**Team Member:** Pankaj Baid
+# Person A — Mac 1: Private DNS Resolver & Test Client
 
-Runs the private DNS resolver (`dnsmasq`) representing a managed DNS service (such as AWS Route 53) for the Private Network Service Platform.
+> **Team Member:** **Pankaj Baid**  
+> **Course:** Computer Networks Laboratory  
+> **Machine Role:** Mac 1 · Authoritative Private DNS Lead & Client Node  
+> **Evaluator Quick Guide:** [`personA/PERSON_A_EVALUATION_GUIDE.md`](PERSON_A_EVALUATION_GUIDE.md)
 
-## Service Details
-- **Role**: Private DNS Resolver + Test Client
-- **Port**: `53` (UDP/TCP)
-- **Domain Mappings**:
-  - `app.teamX.test` → Mac 2 IP (Edge Nginx)
-  - `api.teamX.test` → Mac 2 IP (Edge Nginx)
+---
 
-## Setup & Running DNS Server
+## 🎯 Role Overview
+
+Person A operates the **Private DNS Resolver** using `dnsmasq`. In a real-world enterprise cloud architecture, this component represents a private managed DNS service such as **AWS Route 53 Private Hosted Zones** or **CoreDNS** in Kubernetes.
+
+It translates human-friendly domain names (`app.teamX.test` and `api.teamX.test`) into the private IP address of the Edge Proxy (Mac 2: `10.7.3.128`), decoupling the client applications from raw IP addresses.
+
+```text
++-----------------------+              +-----------------------+
+|  Client (Mac 2/3/4)   |              |  Mac 1 (dnsmasq)      |
+|  "Where is            |              |  Authoritative Zone   |
+|   app.teamX.test?"    |              |  .test                |
++-----------+-----------+              +-----------+-----------+
+            |                                      |
+            | 1. DNS Query (UDP Port 53)           |
+            +------------------------------------->|
+            |                                      |
+            | 2. DNS Answer (A: 10.7.3.128)        |
+            |<-------------------------------------+
+            |
+            v
+   Connects to Mac 2 (Edge Proxy)
+```
+
+---
+
+## ⚙️ Service Specifications
+
+| Parameter | Assigned Value | Description |
+| :--- | :--- | :--- |
+| **Component** | `dnsmasq` | Lightweight authoritative & caching DNS server |
+| **Listener Port** | `53` (UDP and TCP) | Standard privileged DNS service port |
+| **Domain Zones** | `app.teamX.test`, `api.teamX.test` | Custom private `.test` top-level domain |
+| **Target Mapping** | `10.7.3.128` (Mac 2 Edge) | Points clients to the secure HTTPS Edge Proxy |
+| **Configuration** | [`personA/dns/dnsmasq.conf`](dns/dnsmasq.conf) | Zone mapping directives (`address=...`) |
+
+---
+
+## 🚀 Setup & Execution Guide
+
+### 1. Start DNS Server on Mac 1
 ```bash
 cd personA/dns
 
-# 1. Update config with Mac 2's IP and check dnsmasq installation
+# Step 1: Update dnsmasq.conf with the current Edge IP (Mac 2)
 ./setup_dns.sh <MAC2_IP>
 
-# 2. Run dnsmasq in foreground with debug logging
+# Step 2: Start dnsmasq in foreground with verbose debug logging
 sudo dnsmasq -C dnsmasq.conf -d
 ```
 
-## Configuring Client Macs to use Mac 1 as DNS Resolver
-On other Macs (Mac 2, Mac 3, Mac 4):
-1. Open **System Settings** → **Network** → **Wi-Fi / Ethernet** → **Details...** → **DNS**.
-2. Add `<MAC1_IP>` at the top of the DNS Servers list.
-   Keep the DNS servers that were already there, including `8.8.8.8` and `8.8.4.4` on Mac 1.
-3. Verify with:
-   ```bash
-   dig @<MAC1_IP> app.teamX.test
-   ```
-4. Also check ordinary system lookup with `dscacheutil -q host -a name app.teamX.test` and `curl` by name. If macOS sends the private domain to another DNS server, follow the domain-specific `/etc/resolver/teamX.test` step in `projectflow.md` Stage 5 while retaining the existing DNS entries.
+### 2. Configure Client Macs to Query Mac 1
+On client nodes (Mac 2, Mac 3, Mac 4):
+```bash
+# Method A: Domain-Specific macOS Resolver (Recommended)
+sudo mkdir -p /etc/resolver
+printf 'nameserver %s\n' "<MAC1_IP>" | sudo tee /etc/resolver/teamX.test
 
-## Running Client Verification
+# Method B: Flush local cache after configuring
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+```
+
+### 3. Verify DNS Resolution
+```bash
+# Test direct query against Mac 1
+dig @<MAC1_IP> app.teamX.test +short
+
+# Test system resolver
+dscacheutil -q host -a name app.teamX.test
+```
+
+---
+
+## 🧪 Client Test Suite Execution
+Person A also serves as a client verification node:
 ```bash
 cd personA/client
 ./test.sh <MAC1_IP> app.teamX.test 8080 8443
 ```
+
+---
+
+## 🛡️ Phase 2 Contributions (Review 2)
+- **Extension B**: Configured DNS records with short `30s` TTL and proved client OS cache flush mechanisms.
+- **Extension A**: Tested primary DNS outage handling with automatic failover to Mac 4 (Backup DNS).
+- **Extension E**: Updated DNS host records to cut over client traffic to Standby Edge (Mac 3).
+- **Phase 2 Configs & Runbook**: See [`phase2/personA/`](../phase2/personA/) and [`phase2/docs/EVALUATOR_RUBRIC_MAPPING.md`](../phase2/docs/EVALUATOR_RUBRIC_MAPPING.md).
