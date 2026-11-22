@@ -417,7 +417,7 @@ async function runAll() {
 }
 
 function renderEvidence() {
-  const cats = [['all', 'All files'], ['lan', 'LAN'], ['dns', 'DNS'], ['load-balancing', 'Load balancing'], ['tls', 'TLS'], ['caching', 'Caching'], ['wireshark', 'Packets'], ['failures', 'Failures']];
+  const cats = [['all', 'All files'], ['lan', 'LAN'], ['dns', 'DNS'], ['load-balancing', 'Load balancing'], ['tls', 'TLS'], ['caching', 'Caching'], ['wireshark', 'Packets'], ['failures', 'Failures'], ['phase2', 'Phase 2']];
 
   // Update persona counts
   const personCounts = {
@@ -470,10 +470,11 @@ function renderEvidence() {
     </button>`;
   }).join('') : '<div class="empty-evidence"><strong>No saved files match the current filters.</strong><p>Try switching member or category tabs to inspect existing artifacts.</p></div>';
 
+  const totalCategories = cats.length - 1;
   const covered = new Set(files.map(f => f.category)).size;
   $('#file-count').innerHTML = `${files.length} <small>files</small>`;
-  $('#evidence-summary').textContent = `${covered} of 7 evidence categories have files`;
-  $('#evidence-coverage').textContent = `${covered}/7 categories covered across 4 team machines`;
+  $('#evidence-summary').textContent = `${covered} of ${totalCategories} evidence categories have files`;
+  $('#evidence-coverage').textContent = `${covered}/${totalCategories} categories covered across 4 team machines`;
 }
 
 async function loadEvidence() {
@@ -632,6 +633,17 @@ let activePacketFilter = 'ALL';
 
 function viewPacketsGuide() {
   const el = $('#packets');
+  if (el) el.scrollIntoView({ behavior: 'smooth' });
+}
+
+function viewPhase2Evidence() {
+  selectedPerson = 'all';
+  filter = 'phase2';
+  document.querySelectorAll('#persona-filters .persona-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.person === 'all');
+  });
+  renderEvidence();
+  const el = $('#evidence');
   if (el) el.scrollIntoView({ behavior: 'smooth' });
 }
 

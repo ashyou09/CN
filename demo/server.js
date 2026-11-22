@@ -8,7 +8,7 @@ const PORT = Number(process.env.DEMO_PORT || 5050);
 const ROOT = path.resolve(__dirname, '..');
 const PUBLIC = path.join(__dirname, 'public');
 const EVIDENCE = path.join(ROOT, 'evidence');
-const categories = ['lan', 'dns', 'load-balancing', 'tls', 'caching', 'wireshark', 'failures'];
+const categories = ['lan', 'dns', 'load-balancing', 'tls', 'caching', 'wireshark', 'failures', 'phase2'];
 let config = {
   mac1: { name: 'Mac 1 · Person A', role: 'Private DNS & client', ip: '10.7.17.94', port: 53 },
   mac2: { name: 'Mac 2 · Person B', role: 'Nginx edge / TLS / load balancer', ip: '10.7.20.10', port: 8080, httpsPort: 8443 },
@@ -73,6 +73,10 @@ function evidenceFiles() {
     categories.forEach(c => {
       walk(path.join(EVIDENCE, pKey, c), c, pKey);
     });
+  });
+
+  [['personA', 'evidenceA'], ['personB', 'evidenceB'], ['personC', 'evidenceC'], ['personD', 'evidenceD']].forEach(([dirName, pKey]) => {
+    walk(path.join(EVIDENCE, 'phase2', dirName), 'phase2', pKey);
   });
 
   return files;

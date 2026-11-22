@@ -9,7 +9,7 @@
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <aside class="sidebar">
-  <a class="brand" href="#overview"><span class="brand-mark">N<span>↗</span></span><span>Network Lab<small>COMPUTER NETWORKS / PHASE 1</small></span></a>
+  <a class="brand" href="#overview"><span class="brand-mark">N<span>↗</span></span><span>Network Lab<small>COMPUTER NETWORKS / PHASE 1 &amp; 2</small></span></a>
   <p class="nav-label">WORKSPACE</p>
   <nav aria-label="Main navigation">
     <a class="active" href="#overview"><span>◎</span> Overview</a>
@@ -17,6 +17,7 @@
     <a href="#checks"><span>☷</span> Live checks <span class="nav-count">8</span></a>
     <a href="#packets"><span>◈</span> Packet sniffer (Stage 8)</a>
     <a href="#failures"><span>↯</span> Failure guide</a>
+    <a href="#phase2"><span>🛡</span> Phase 2 resilience</a>
     <a href="#evidence"><span>▤</span> Evidence library</a>
   </nav>
   <div class="sidebar-note"><span class="eyebrow">THE EXPERIMENT</span><p>One private network.<br>Four machines.<br>A request you can trace.</p><span class="small muted">DNS → TCP → TLS → HTTP</span></div>
@@ -132,6 +133,61 @@
 
     <section id="failures"><div class="section-heading"><div><p class="eyebrow">WHEN SOMETHING BREAKS</p><h2>Find the failing layer.</h2><p class="muted">Play a labeled explanation, or use the separate Apply control to change the live lab. Verify the resulting behavior with live checks.</p></div><span class="tag neutral">Guided scenarios + explicit live controls</span></div><div class="failure-list" id="failure-list"></div></section>
 
+    <section id="phase2" class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">PHASE 2 · HARDEN, RECOVER &amp; TROUBLESHOOT</p>
+          <h2>Resilience extensions (A–F).</h2>
+          <p class="muted">Extends the same 4-node architecture with backup DNS, 30s TTL cutovers, pf service isolation, passive HA failover, standby edge migration, and bottom-up fault diagnosis.</p>
+        </div>
+        <button class="button secondary" type="button" onclick="viewPhase2Evidence()">View Phase 2 evidence ↗</button>
+      </div>
+      <div class="check-grid">
+        <article class="check-card">
+          <div class="check-top"><span class="check-icon">◎</span><span class="check-state pass">Ext A</span></div>
+          <div class="check-number">EXTENSION A · PERSON D / A</div>
+          <h3>Backup DNS resolver</h3>
+          <p class="check-desc">Secondary dnsmasq on Mac 4 mirrors .test records so client resolution continues when Mac 1 DNS stops.</p>
+          <div class="check-rule"><span>CONFIG</span><strong>phase2/personD/dns/</strong></div>
+        </article>
+        <article class="check-card">
+          <div class="check-top"><span class="check-icon">◷</span><span class="check-state pass">Ext B</span></div>
+          <div class="check-number">EXTENSION B · PERSON A</div>
+          <h3>DNS TTL (30s) &amp; flush</h3>
+          <p class="check-desc">Explicit 30s TTL demonstrates OS resolver caching (mDNSResponder) and instant cutover via dscacheutil -flushcache.</p>
+          <div class="check-rule"><span>CONFIG</span><strong>phase2/personA/dns/</strong></div>
+        </article>
+        <article class="check-card">
+          <div class="check-top"><span class="check-icon">🛡</span><span class="check-state pass">Ext C</span></div>
+          <div class="check-number">EXTENSION C · PERSON C / D</div>
+          <h3>pf service isolation</h3>
+          <p class="check-desc">macOS pf rules block direct client traffic to :3001/:3002 while allowing Primary (Mac 2) and Standby (Mac 3) edges.</p>
+          <div class="check-rule"><span>CONFIG</span><strong>phase2/personC|D/firewall/</strong></div>
+        </article>
+        <article class="check-card">
+          <div class="check-top"><span class="check-icon">⇉</span><span class="check-state pass">Ext D</span></div>
+          <div class="check-number">EXTENSION D · PERSON B</div>
+          <h3>HA failover &amp; SPOF</h3>
+          <p class="check-desc">Nginx passive health checks (max_fails=3, fail_timeout=5s) drain failed backends and resume automatically on recovery.</p>
+          <div class="check-rule"><span>CONFIG</span><strong>phase2/personB/nginx/</strong></div>
+        </article>
+        <article class="check-card">
+          <div class="check-top"><span class="check-icon">⇄</span><span class="check-state pass">Ext E</span></div>
+          <div class="check-number">EXTENSION E · PERSON C / A</div>
+          <h3>Standby edge migration</h3>
+          <p class="check-desc">Standby Nginx on Mac 3 (X-Edge: Standby-Mac3) takes over cleanly via 30s-TTL DNS cutover without new hardware.</p>
+          <div class="check-rule"><span>CONFIG</span><strong>phase2/personC/nginx/</strong></div>
+        </article>
+        <article class="check-card">
+          <div class="check-top"><span class="check-icon">⚡</span><span class="check-state pass">Ext F</span></div>
+          <div class="check-number">EXTENSION F · ALL MEMBERS</div>
+          <h3>5-layer fault diagnosis</h3>
+          <p class="check-desc">Systematic isolation across DNS ➔ IP ➔ TCP/pf ➔ TLS ➔ HTTP upstream to pinpoint injected faults quickly.</p>
+          <div class="check-rule"><span>PLAYBOOK</span><strong>PHASE2_HANDOVER.md</strong></div>
+        </article>
+      </div>
+    </section>
+
     <section id="evidence" class="panel">
       <div class="section-heading">
         <div>
@@ -157,7 +213,7 @@
       </div>
     </section>
 
-    <footer><span><strong>Network Lab</strong> · Phase 1</span><span>Understand it. Test it. Back it with evidence.</span></footer>
+    <footer><span><strong>Network Lab</strong> · Phase 1 &amp; 2</span><span>Understand it. Test it. Back it with evidence.</span></footer>
   </main>
 </div>
 <dialog id="config-dialog"><form id="config-form"><div class="dialog-head"><div><p class="eyebrow">NETWORK TARGETS</p><h2>Configure the lab</h2></div><button class="close" type="button" aria-label="Close configuration">×</button></div><p class="muted">These addresses control dashboard probes only. Update dnsmasq and Nginx separately. Values reset when the demo server restarts.</p><div id="config-fields"></div><p class="form-error" id="config-error" role="alert"></p><div class="dialog-actions"><button type="button" class="button secondary close-config">Cancel</button><button class="button primary" type="submit">Save targets</button></div></form></dialog>
