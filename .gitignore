@@ -4,3 +4,4 @@ personB/nginx/logs/*.log
 personB/nginx/logs/*.pid
 phase2/*/nginx/logs/*.log
 phase2/*/nginx/logs/*.pid
+CNstudy.md
