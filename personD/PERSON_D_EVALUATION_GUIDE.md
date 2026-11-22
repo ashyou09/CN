@@ -1,23 +1,27 @@
 # Examiner & Evaluator Quick-Grading Guide — Person D (Mac 4)
 
-> **Evaluator Note:** This document provides an instant, structured grading sheet specifically for **Person D / Mac 4** (`10.7.17.147`). Every requirement from [`projectflow.md`](../projectflow.md) has been executed, logged, verified, and mapped below.
+> **Evaluator Note:** This document provides an instant, structured grading sheet specifically for **Person D / Mac 4 (Ranvendra Pratap Singh)** (`10.7.17.147`). Every requirement from Phase 1 ([`projectflow.md`](../projectflow.md)) and Phase 2 ([`PHASE2_HANDOVER.md`](../PHASE2_HANDOVER.md)) has been executed, logged, verified, and mapped below.
 
 ---
 
 ## 🎯 Candidate & Machine Profile
-- **Candidate Role**: Person D / Mac 4 (Backend B Provider + Network Client & Packet Capture Lead)
+- **Candidate Name**: **Ranvendra Pratap Singh**
+- **Candidate Role**: Person D / Mac 4 (Backend B Provider + Network Client, Packet Capture & Backup DNS Lead)
 - **Local Machine IP**: `10.7.17.147` (`en0`)
 - **Default Gateway**: `10.7.0.1` | **Subnet**: `255.255.224.0` (`/19`)
-- **Hosted Component**: Backend Server B (Node.js Express on TCP `3002`)
+- **Hosted Services**:
+  - Backend Server B (Node.js Express on TCP `3002`)
+  - Backup DNS Resolver (Phase 2 Ext A: `dnsmasq` on port `53`)
+  - Packet Filter Firewall (Phase 2 Ext C: `pfctl` on port `3002`)
 - **Team Topology**:
-  - Mac 1 (Person A - Private DNS): `10.7.17.94:53`
-  - Mac 2 (Person B - Edge Nginx / TLS): `10.7.3.128:8080,8443`
-  - Mac 3 (Person C - Backend A): `10.7.6.84:3001`
-  - Mac 4 (Person D - Backend B & Client): `10.7.17.147:3002`
+  - Mac 1 (Person A - Primary DNS): `10.7.17.94:53`
+  - Mac 2 (Person B - Primary Edge Nginx / TLS): `10.7.3.128:8080,8443`
+  - Mac 3 (Person C - Backend A / Standby Edge): `10.7.6.84:3001,8443`
+  - Mac 4 (Person D - Backend B / Backup DNS): `10.7.17.147:3002,53`
 
 ---
 
-## 📊 Rubric Evaluation & Fast-Check Matrix
+## 📊 Phase 1 Rubric Fast-Check Matrix
 
 | Phase 1 Requirement | Evaluation Criteria | Primary Evidence File | Fast Verification Command |
 | :--- | :--- | :--- | :--- |
@@ -30,11 +34,17 @@
 | **7. HTTP Caching / 304 (Task F)**| `Cache-Control`, `ETag`, and conditional `If-None-Match` request returns `304 Not Modified` | [`evidence/caching/caching-and-304-evidence.txt`](../evidence/final_combined_evidence/caching/caching-and-304-evidence.txt) | `curl -i -H "If-None-Match: \"39-jxvt8kclwpAy7qZ0gJ/MRIVczo0\"" "https://app.teamX.test:8443/api/cached"` |
 | **8. Packet Capture (Task G)**| Full packet capture containing DNS query, TCP SYN/ACK, TLS handshake, Application Data | [`evidence/wireshark/phase1-flow.pcap`](../evidence/final_combined_evidence/wireshark/phase1-flow.pcap) | `tshark -r evidence/final_combined_evidence/wireshark/phase1-flow.pcap` or open in Wireshark |
 | **9. Wireshark Protocol Analysis**| Frame annotation, TCP Sequence & ACK numbers, and 5-layer OSI mapping | [`evidence/wireshark/wireshark-packet-analysis.txt`](../evidence/final_combined_evidence/wireshark/wireshark-packet-analysis.txt) | Review document |
-| **10. Deliberate Fault 1** | Misconfigured DNS resolver: Layer 7 DNS fails while Layer 3 IP ping passes | [`evidence/failures/failure-case-1-dns-resolver-failure.txt`](../evidence/final_combined_evidence/failures/failure-case-1-dns-resolver-failure.txt) | Review document |
-| **11. Deliberate Fault 2** | DNS misdirection to non-edge host: TCP port 8443 connection refused | [`evidence/failures/failure-case-2-dns-misdirection.txt`](../evidence/final_combined_evidence/failures/failure-case-2-dns-misdirection.txt) | Review document |
-| **12. Deliberate Fault 3** | Single backend failure: Nginx automatically routes 100% traffic to remaining backend | [`evidence/failures/failure-case-3-single-backend-stopped.txt`](../evidence/final_combined_evidence/failures/failure-case-3-single-backend-stopped.txt) | Review document |
-| **13. Deliberate Fault 4** | Total backend outage: Edge returns `HTTP 502 Bad Gateway` | [`evidence/failures/failure-case-4-both-backends-down.txt`](../evidence/final_combined_evidence/failures/failure-case-4-both-backends-down.txt) | Review document |
-| **14. Deliberate Fault 5** | Destination port error: Connecting to 8444 results in TCP Connection Refused | [`evidence/failures/failure-case-5-wrong-port.txt`](../evidence/final_combined_evidence/failures/failure-case-5-wrong-port.txt) | Review document |
+| **10. Deliberate Faults D1–D5** | Detailed logs and packet captures for all 5 deliberate failure scenarios | [`docs/FAILURE_ANALYSIS_RUNBOOK.md`](../docs/FAILURE_ANALYSIS_RUNBOOK.md) | Review runbook & evidence |
+
+---
+
+## 🛡️ Phase 2 Fast-Check Matrix (Review 2: 50 Marks)
+
+| Extension | Evaluation Criteria | Primary Evidence File | Fast Verification Command |
+| :--- | :--- | :--- | :--- |
+| **Ext A: Backup DNS Resolver** | Operates secondary DNS resolver on Mac 4; handles failover seamlessly | [`phase2/personD/dns/dnsmasq-backup-lan.conf`](../phase2/personD/dns/dnsmasq-backup-lan.conf) | `dig @127.0.0.1 app.teamX.test +short` |
+| **Ext C: Service Isolation (pf)** | Kernel packet filter rejects unauthorized client TCP connections on port 3002 | [`phase2/personD/firewall/backend_b_isolation.pf`](../phase2/personD/firewall/backend_b_isolation.pf) | `sudo pfctl -sr \| grep 3002` |
+| **Ext F: Rapid Troubleshooting** | Executes 120-second 5-layer diagnostic triage when fault is injected | [`docs/TROUBLESHOOTING_PLAYBOOK.md`](../docs/TROUBLESHOOTING_PLAYBOOK.md) | Live examination demonstration |
 
 ---
 
