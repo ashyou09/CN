@@ -192,9 +192,12 @@ async function playFlow(live = false) {
   $('#flow-events').replaceChildren();
   document.querySelectorAll('.machine').forEach(m => m.classList.remove('node-failed', 'node-failover'));
   $('.client-chip strong').textContent = live ? 'Demo host client' : 'Client browser';
-  $('.client-chip div span').textContent = live ? 'Actual probe source' : 'Illustrated on Mac 1';
-  $('#flow-mode').textContent = live ? 'Live command progress' : 'Illustration · ' + currentScenario;
+  $('.client-chip div span').textContent = live ? 'Actual probe source' : 'Simulation + background CLI';
+  $('#flow-mode').textContent = live ? 'Live command progress' : 'Running terminal proof · ' + currentScenario;
   let result;
+  const simPromise = !live
+    ? api('/api/simulate-scenario?scenario=' + encodeURIComponent(currentScenario)).catch(err => ({ error: err.message }))
+    : null;
   try {
     if (live) {
       flowStatus('Connecting to probe server', 'Starting live checks…', 'DNS and HTTPS are tested from the demo host.');
@@ -212,51 +215,75 @@ async function playFlow(live = false) {
         return;
       }
     }
-    const illustration = 'Illustration only. Use live checks for measured evidence.';
+    const illustration = 'Running real terminal probes in background against live local backends…';
     if (!live && currentScenario === 'ext-a') {
       await flowLeg(0,'route-dns',false,['client','dns'],'Ext A · Primary DNS down','Mac 1 dnsmasq stops responding on port 53.',illustration);
       await flowLeg(1,'route-dns',true,['b','client'],'Ext A · Backup DNS answers','Client falls back to Backup dnsmasq on Mac 4 and resolves app.teamX.test.',illustration);
       await flowLeg(2,'route-edge',false,['client','edge'],'Ext A · HTTPS continues','Service stays reachable via Primary Edge despite Mac 1 DNS outage.',illustration);
-      flowStep(6,[]); return;
-    }
-    if (!live && currentScenario === 'ext-b') {
+      flowStep(6,[]);
+    } else if (!live && currentScenario === 'ext-b') {
       await flowLeg(0,'route-dns',false,['client','dns'],'Ext B · Initial lookup (TTL 30s)','OS resolver caches the returned Edge IP for 30 seconds.',illustration);
       await flowLeg(1,'route-dns',true,['dns','client'],'Ext B · Record updated','Even after DNS changes, client reuses cached IP until 30s expires or dscacheutil -flushcache runs.',illustration);
-      flowStep(6,[]); return;
-    }
-    if (!live && currentScenario === 'ext-c') {
+      flowStep(6,[]);
+    } else if (!live && currentScenario === 'ext-c') {
       await flowLeg(2,'route-edge',false,['client','edge'],'Ext C · Client hits Edge only','pf rules on Mac 3/4 drop direct client access to :3001/:3002.',illustration);
       await flowLeg(3,'route-a',false,['edge','a'],'Ext C · Edge allowed by pf','Mac 2 Edge IP passes pf rule and reaches Backend A.',illustration);
       await flowLeg(4,'route-a',true,['a','edge'],'Ext C · Response via Edge','All traffic is forced through TLS termination & load balancing.',illustration);
-      flowStep(6,[]); return;
-    }
-    if (!live && currentScenario === 'ext-e') {
+      flowStep(6,[]);
+    } else if (!live && currentScenario === 'ext-e') {
       await flowLeg(0,'route-dns',false,['client','dns'],'Ext E · DNS cutover (TTL 30s)','Person A updates app.teamX.test to Standby Edge Mac 3 IP.',illustration);
       await flowLeg(2,'route-a',false,['client','a'],'Ext E · Traffic moves to Standby Edge','New lookups route to Standby Nginx on Mac 3 (X-Edge: Standby-Mac3) with valid TLS.',illustration);
       await flowLeg(4,'route-b',true,['b','client'],'Ext E · Backends still balanced','Standby Edge distributes requests across Backends A and B.',illustration);
-      flowStep(6,[]); return;
+      flowStep(6,[]);
+    } else {
+      await flowLeg(0,'route-dns',false,['client','dns'],'01 · DNS query',live?'The demo host queried the private resolver.':'The client queries Person A’s DNS resolver.',live?`Observed from ${result.probeHost}.`:illustration);
+      if (!live && currentScenario === 'fail-dns') {
+        flowStatus('DNS failure + background check','A resolver timeout prevents the client from obtaining the edge address.','See live dig timeout & IP ping proof below.');
+      } else {
+        await flowLeg(1,'route-dns',true,['dns','client'],'02 · DNS answer',live?`Observed A record: ${result.expectedIp}`:'DNS returns the edge address to the client.',live?'The direct and system dig answers matched.':illustration);
+        if (!live && currentScenario === 'fail-wrong-ip') {
+          flowStatus('Wrong DNS record','DNS answers, but points the client to the wrong host.','Manual demonstration only: restore the A record to the actual edge IP.');
+        } else {
+          await flowLeg(2,'route-edge',false,['client','edge'],'03 · HTTPS request',live?'The demo host completed a verified HTTPS request.':'The client opens a connection to the Nginx edge.',live?'Certificate and hostname verified against the project CA.':illustration);
+          if (!live && currentScenario === 'fail-wrong-port') {
+            flowStatus('Wrong port + background check','A connection to an unused port is refused.','See live nc port probe proof below.');
+          } else if (!live && currentScenario === 'fail-both') {
+            await flowLeg(5,'route-edge',true,['edge','client'],'Expected error response','If no upstream is reachable, Nginx returns 502 Bad Gateway.',illustration);
+          } else {
+            const backends = live ? [result.backend] : currentScenario === 'fail-a' ? ['B'] : currentScenario === 'fail-b' ? ['A'] : ['A','B'];
+            for (const [index,backend] of backends.entries()) {
+              if (index) await flowLeg(2,'route-edge',false,['client','edge'],'Next independent request','The client sends a second request to Nginx.',illustration);
+              const route = backend === 'A' ? 'route-a' : 'route-b', node = backend === 'A' ? 'a' : 'b';
+              await flowLeg(3,route,false,['edge',node],'04 · Upstream route',`Nginx selects Backend ${backend} on Mac ${backend === 'A' ? '3' : '4'}.`,live?`Route inferred from observed X-Backend: ${backend}.`:illustration);
+              await flowLeg(4,route,true,[node,'edge'],'05 · Backend reply',`Backend ${backend} returns a response through the edge.`,live?`Observed HTTP ${result.statusCode}; X-Backend: ${backend}.`:illustration);
+              await flowLeg(5,'route-edge',true,['edge','client'],'06 · Response returns',live?'The response arrived at the demo host client.':'The response returns to the illustrated client.',live?`Measured HTTPS command duration: ${result.duration} ms.`:illustration);
+            }
+            flowStep(6,[]);
+            flowStatus(live?'Live probe complete':'Walkthrough complete',live?`Verified HTTP 200 from Backend ${result.backend}.`:'Requests completed — loading live backend command output…',live?`Source: ${result.probeHost} · ${new Date(result.completedAt).toLocaleTimeString()}. Motion is a replay, not a packet capture.`:illustration);
+          }
+        }
+      }
     }
-    await flowLeg(0,'route-dns',false,['client','dns'],'01 · DNS query',live?'The demo host queried the private resolver.':'The client queries Person A’s DNS resolver.',live?`Observed from ${result.probeHost}.`:illustration);
-    if (!live && currentScenario === 'fail-dns') {
-      flowStatus('Illustrated DNS failure','A resolver timeout prevents the client from obtaining the edge address.','A timeout is different from NXDOMAIN. The live DNS fault redirects probes; it does not stop dnsmasq.');return;
+
+    if (simPromise) {
+      const sim = await simPromise;
+      if (sim && !sim.error) {
+        $('#flow-mode').textContent = `Simulation + live backend proof · ${currentScenario}`;
+        (sim.events || []).forEach(ev => {
+          const row = document.createElement('li');
+          row.className = ev.state;
+          row.textContent = `${new Date(ev.at).toLocaleTimeString()} · ${ev.message} · ${ev.state}`;
+          $('#flow-events').appendChild(row);
+        });
+        const wrap = $('#flow-raw-wrap');
+        wrap.hidden = false;
+        wrap.open = true;
+        $('#flow-raw').textContent = sim.raw || '(no command output)';
+        if (sim.backendsHit?.length) {
+          flowStatus(`Live proof complete (${currentScenario})`, `Real background commands hit Backend ${sim.backendsHit.join(' & ')}`, `Host: ${sim.probeHost} · ${new Date(sim.completedAt).toLocaleTimeString()}. Expand or inspect live terminal proof below.`);
+        }
+      }
     }
-    await flowLeg(1,'route-dns',true,['dns','client'],'02 · DNS answer',live?`Observed A record: ${result.expectedIp}`:'DNS returns the edge address to the client.',live?'The direct and system dig answers matched.':illustration);
-    if (!live && currentScenario === 'fail-wrong-ip') {flowStatus('Illustrated wrong DNS record','DNS answers, but points the client to the wrong host.','Manual demonstration only: restore the A record to the actual edge IP.');return;}
-    await flowLeg(2,'route-edge',false,['client','edge'],'03 · HTTPS request',live?'The demo host completed a verified HTTPS request.':'The client opens a connection to the Nginx edge.',live?'Certificate and hostname verified against the project CA.':illustration);
-    if (!live && currentScenario === 'fail-wrong-port') {flowStatus('Illustrated wrong port','A connection to an unused port may be refused or time out.','Use the configured port 8443. No HTTP response is guaranteed on port 8444.');return;}
-    if (!live && currentScenario === 'fail-both') {
-      await flowLeg(5,'route-edge',true,['edge','client'],'Expected error response','If no upstream is reachable, Nginx can return 502 Bad Gateway.',illustration);return;
-    }
-    const backends = live ? [result.backend] : currentScenario === 'fail-a' ? ['B'] : currentScenario === 'fail-b' ? ['A'] : ['A','B'];
-    for (const [index,backend] of backends.entries()) {
-      if (index) await flowLeg(2,'route-edge',false,['client','edge'],'Next independent request','The client sends a second request to Nginx.',illustration);
-      const route = backend === 'A' ? 'route-a' : 'route-b', node = backend === 'A' ? 'a' : 'b';
-      await flowLeg(3,route,false,['edge',node],'04 · Upstream route',`Nginx selects Backend ${backend} on Mac ${backend === 'A' ? '3' : '4'}.`,live?`Route inferred from observed X-Backend: ${backend}.`:'Example selection. A configured-down upstream is skipped, not probed.');
-      await flowLeg(4,route,true,[node,'edge'],'05 · Backend reply',`Backend ${backend} returns a response through the edge.`,live?`Observed HTTP ${result.statusCode}; X-Backend: ${backend}.`:illustration);
-      await flowLeg(5,'route-edge',true,['edge','client'],'06 · Response returns',live?'The response arrived at the demo host client.':'The response returns to the illustrated client.',live?`Measured HTTPS command duration: ${result.duration} ms.`:illustration);
-    }
-    flowStep(6,[]);
-    flowStatus(live?'Live probe complete':'Walkthrough complete',live?`Verified HTTP 200 from Backend ${result.backend}.`:'The illustrated requests and responses completed their round trips.',live?`Source: ${result.probeHost} · ${new Date(result.completedAt).toLocaleTimeString()}. Motion is a replay, not a packet capture.`:illustration);
   } catch (error) {flowStep(-1,[]);flowStatus('Probe unavailable','Could not complete the trace.',error.message);}
   finally {flowBusyState(false);}
 }

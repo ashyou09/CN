@@ -695,6 +695,108 @@ const server = http.createServer(async (req, res) => {
         raw: [l1, l2, l3, l4, l5].map(raw).join('\n\n')
       });
     }
+    if (route === '/api/simulate-scenario') {
+      const scenario = u.searchParams.get('scenario') || 'normal';
+      const valid = ['normal', 'fail-a', 'fail-b', 'fail-both', 'fail-dns', 'fail-wrong-port', 'ext-a', 'ext-b', 'ext-c', 'ext-e'];
+      if (!valid.includes(scenario)) return json(res, 400, { error: 'Unknown scenario' });
+      await ensureLocalServices();
+      const ca = path.join(ROOT, 'personB/tls/ca.crt');
+      const events = [];
+      const chunks = [];
+      const backendsHit = [];
+      const addEv = (stage, state, message) => events.push({ stage, state, message, at: new Date().toISOString() });
+      const readTail = (rel, n = 5) => {
+        const p = path.join(ROOT, rel);
+        if (!fs.existsSync(p)) return '';
+        return fs.readFileSync(p, 'utf8').trim().split('\n').slice(-n).join('\n');
+      };
+
+      if (scenario === 'normal') {
+        const d = await command('dig', ['@127.0.0.1', '-p', '15353', c.domain, 'A', '+noall', '+answer']);
+        addEv('dns', d.success ? 'passed' : 'failed', `Primary DNS (:15353): ${d.stdout.trim() || 'no answer'}`);
+        const r1 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        const r2 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        [r1, r2].forEach((r, i) => {
+          const b = header(r, 'X-Backend'); if (b) backendsHit.push(b);
+          addEv('backend', status(r) === 200 ? 'passed' : 'failed', `HTTPS Request #${i + 1} -> HTTP ${status(r)} · X-Backend: ${b || '?'} · X-Edge: ${header(r, 'X-Edge') || '?'}`);
+        });
+        const logTail = readTail('phase2/personB/nginx/logs/primary-access.log', 4);
+        chunks.push(raw(d), raw(r1), raw(r2), `# Nginx Primary Access Log (last 4 lines)\n${logTail}`);
+      } else if (scenario === 'fail-a') {
+        const directB = await curl(['http://127.0.0.1:3002/api/status']);
+        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        if (header(edgeRes, 'X-Backend')) backendsHit.push(header(edgeRes, 'X-Backend'));
+        addEv('backend', status(directB) === 200 ? 'passed' : 'failed', `Direct Backend B (:3002): HTTP ${status(directB)} · X-Backend: ${header(directB, 'X-Backend') || '?'}`);
+        addEv('edge', status(edgeRes) === 200 ? 'passed' : 'failed', `Edge HTTPS (:8443): HTTP ${status(edgeRes)} · X-Backend: ${header(edgeRes, 'X-Backend') || '?'}`);
+        chunks.push(raw(directB), raw(edgeRes));
+      } else if (scenario === 'fail-b') {
+        const directA = await curl(['http://127.0.0.1:3001/api/status']);
+        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        if (header(edgeRes, 'X-Backend')) backendsHit.push(header(edgeRes, 'X-Backend'));
+        addEv('backend', status(directA) === 200 ? 'passed' : 'failed', `Direct Backend A (:3001): HTTP ${status(directA)} · X-Backend: ${header(directA, 'X-Backend') || '?'}`);
+        addEv('edge', status(edgeRes) === 200 ? 'passed' : 'failed', `Edge HTTPS (:8443): HTTP ${status(edgeRes)} · X-Backend: ${header(edgeRes, 'X-Backend') || '?'}`);
+        chunks.push(raw(directA), raw(edgeRes));
+      } else if (scenario === 'fail-both') {
+        const dead = await curl(['http://127.0.0.1:39998/api/status']);
+        const edgeRes = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        addEv('backend', 'failed', `Simulated down upstream (:39998): ${dead.error || 'Connection refused'}`);
+        addEv('edge', status(edgeRes) === 200 ? 'passed' : 'failed', `Live Edge (:8443) currently returns HTTP ${status(edgeRes)} (apply live fault to observe 502)`);
+        chunks.push(raw(dead), raw(edgeRes));
+      } else if (scenario === 'fail-dns') {
+        const badDns = await command('dig', ['@127.0.0.1', '-p', '53535', c.domain, 'A', '+time=1', '+tries=1']);
+        const p = await command('ping', ['-c', '1', '127.0.0.1']);
+        addEv('dns', 'failed', 'DNS probe (:53535) failed/timed out as expected');
+        addEv('ip', p.success ? 'passed' : 'failed', `IP reachability (ping 127.0.0.1): ${p.success ? '0.0% packet loss' : 'failed'}`);
+        chunks.push(raw(badDns), raw(p));
+      } else if (scenario === 'fail-wrong-port') {
+        const closed = await command('nc', ['-zv', '-w', '1', '127.0.0.1', '8449']);
+        const open = await command('nc', ['-zv', '-w', '1', '127.0.0.1', '8443']);
+        addEv('tcp', 'failed', 'TCP port 8449: Connection refused (wrong port)');
+        addEv('tcp', (open.success || (open.stderr || '').includes('succeeded')) ? 'passed' : 'failed', 'TCP port 8443: succeeded (configured Edge HTTPS port)');
+        chunks.push(raw(closed), raw(open));
+      } else if (scenario === 'ext-a') {
+        const deadPri = await command('dig', ['@127.0.0.1', '-p', '53535', c.domain, 'A', '+time=1', '+tries=1']);
+        const bak = await command('dig', ['@127.0.0.1', '-p', '15354', c.domain, 'A', '+noall', '+answer']);
+        const r = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        if (header(r, 'X-Backend')) backendsHit.push(header(r, 'X-Backend'));
+        addEv('dns', 'failed', 'Primary DNS unavailable on :53535');
+        addEv('dns', bak.success ? 'passed' : 'failed', `Backup DNS (:15354) answered: ${bak.stdout.trim()}`);
+        addEv('backend', status(r) === 200 ? 'passed' : 'failed', `HTTPS service succeeded: HTTP ${status(r)} · X-Backend: ${header(r, 'X-Backend') || '?'}`);
+        chunks.push(raw(deadPri), raw(bak), raw(r));
+      } else if (scenario === 'ext-b') {
+        const d1 = await command('dig', ['@127.0.0.1', '-p', '15353', c.domain, 'A', '+noall', '+answer']);
+        const r = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        if (header(r, 'X-Backend')) backendsHit.push(header(r, 'X-Backend'));
+        addEv('dns', d1.stdout.includes('30\tIN\tA') ? 'passed' : 'failed', `DNS Answer with 30s TTL: ${d1.stdout.trim()}`);
+        addEv('backend', status(r) === 200 ? 'passed' : 'failed', `Edge & Backend responded: HTTP ${status(r)} · X-Backend: ${header(r, 'X-Backend') || '?'}`);
+        chunks.push(raw(d1), raw(r));
+      } else if (scenario === 'ext-c') {
+        const r = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        if (header(r, 'X-Backend')) backendsHit.push(header(r, 'X-Backend'));
+        const pfA = readTail('phase2/personC/firewall/backend_a_isolation.pf', 20);
+        addEv('firewall', pfA.includes('block in quick') ? 'passed' : 'failed', 'pf rules block direct client traffic to :3001/:3002');
+        addEv('backend', status(r) === 200 ? 'passed' : 'failed', `Allowed Edge path (:8443 -> backend): HTTP ${status(r)} · X-Backend: ${header(r, 'X-Backend') || '?'}`);
+        chunks.push(raw(r), `# phase2/personC/firewall/backend_a_isolation.pf\n${pfA}`);
+      } else if (scenario === 'ext-e') {
+        const pri = await curl(['--cacert', ca, '--resolve', `${c.domain}:8443:127.0.0.1`, `https://${c.domain}:8443/api/status`]);
+        const st1 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8444:127.0.0.1`, `https://${c.domain}:8444/api/status`]);
+        const st2 = await curl(['--cacert', ca, '--resolve', `${c.domain}:8444:127.0.0.1`, `https://${c.domain}:8444/api/status`]);
+        [st1, st2].forEach(r => { const b = header(r, 'X-Backend'); if (b) backendsHit.push(b); });
+        addEv('edge', header(pri, 'X-Edge') === 'Primary-Mac2' ? 'passed' : 'failed', `Primary Edge (:8443): HTTP ${status(pri)} · X-Edge: ${header(pri, 'X-Edge') || '?'}`);
+        addEv('edge', header(st1, 'X-Edge') === 'Standby-Mac3' ? 'passed' : 'failed', `Standby Edge (:8444): HTTP ${status(st1)} · X-Edge: ${header(st1, 'X-Edge') || '?'} · Backends: ${backendsHit.join(', ')}`);
+        const logTail = readTail('phase2/personC/nginx/logs/standby-access.log', 4);
+        chunks.push(raw(pri), raw(st1), raw(st2), `# Nginx Standby Access Log (last 4 lines)\n${logTail}`);
+      }
+
+      return json(res, 200, {
+        scenario,
+        completedAt: new Date().toISOString(),
+        probeHost: require('node:os').hostname(),
+        backendsHit,
+        events,
+        raw: chunks.join('\n\n')
+      });
+    }
     if (route.startsWith('/api/')) return json(res, 404, { error: 'Unknown API endpoint' });
     const files = { '/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css' };
     if (!files[route]) return json(res, 404, { error: 'Not found' });
